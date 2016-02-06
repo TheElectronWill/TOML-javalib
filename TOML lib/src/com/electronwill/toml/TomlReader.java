@@ -42,23 +42,22 @@ public final class TomlReader {
 	 * Parses TOML data.
 	 */
 	public Map<String, Object> read() throws IOException {
-		map = new HashMap<>();
 		map = readTableContent();// reads everything until the first table (remember that non-inline tables are declared
 									// at the end of the file, because a table ends with another table, or with the end
 									// of the file)
 		while (pos < data.length()) {
-			int ch = data.charAt(pos++);// The [ character has already been read by #readTableContent()
+			int firstChar = data.charAt(pos++);// The [ character has already been read by #readTableContent()
 			String key;
-			if (ch == '[') {// there are two [
+			if (firstChar == '[') {// there are two [
 				pos++;
 			}
 			key = until(']');
-			if (ch == '[') {// there were two [
+			if (firstChar == '[') {// there were two [
 				if (data.charAt(pos++) != ']')// [[name] is invalid
 					throw new IOException("Missing character ] at " + getCurrentPosition());
 			}
 			Map<String, Object> value = readTableContent();
-			if (ch == '[') {// element of a table array
+			if (firstChar == '[') {// element of a table array
 				// TODO supporter a.b.c
 				// TODO à faire
 			} else {// just a table
@@ -68,8 +67,6 @@ public final class TomlReader {
 		}
 		return map;
 	}
-	
-	// TODO Supporter les commentaires: commencent par # et vont jusqu'à la fin de la ligne, cad jusqu'à '\n'.
 	
 	// === Methods for reading data structures ===
 	
@@ -94,15 +91,41 @@ public final class TomlReader {
 			} else if (ch == '\n' || ch == '\t' || ch == ' ') {
 				continue;// ignores
 			} else if (ch == '#') {
-				pos = data.indexOf('\n', pos) + 1;// goes after the \n character
+				goAfterOrAtEnd('\n');
+				continue;
 			} else {
 				pos--;// unreads ch
-				key = until(' ', '=');
-				if (data.charAt(pos) != '=')// if key reading didn't stop at =
-					pos = data.indexOf('=', pos) + 1;// goes after the = character
+				// Reads the name of the key:
+				StringBuilder keyBuilder = new StringBuilder();
+				while (true) {
+					if (pos >= data.length())
+						throw new IOException("Invalid end of file: missing = character at " + getCurrentPosition());
+					char next = data.charAt(pos++);
+					if (next == '#')
+						throw new IOException("Invalid comment (missing = character) at " + getCurrentPosition());
+					if (next == '\t' || next == ' ')
+						continue;
+					if (next == '=')
+						break;
+					else
+						keyBuilder.append(next);
+				}
+				key = keyBuilder.toString();
+				
+				// Skips whitespaces after the = character:
+				while (true) {
+					if (pos >= data.length())
+						throw new IOException("Invalid end of file: missing value after the = character at " + getCurrentPosition());
+					char next = data.charAt(pos);
+					if (next != ' ' && next != '\t')
+						break;
+					pos++;// increments the position only if the character was a space or a tab, for the readValue()
+							// method not to miss the first character of the value
+				}
+				
 			}
 			
-			value = readValue(true, '[');
+			value = readValue(true, true, '[');
 			table.put(key, value);
 		}
 	}
@@ -126,7 +149,9 @@ public final class TomlReader {
 			} else if (ch == '\t' || ch == ' ') {
 				continue;// ignores
 			} else if (ch == '\n') {
-				throw new IOException("Invalid line break in a inline table, at the end of line " + (getCurrentLine() - 1));
+				throw new IOException("Invalid line break in an inline table, at the end of line " + (getCurrentLine() - 1));
+			} else if (ch == '#') {
+				throw new IOException("Invalid comment in an inline table at " + getCurrentPosition());
 			} else {
 				pos--;// unreads ch
 				key = until(' ', '=', '\t');
@@ -134,7 +159,7 @@ public final class TomlReader {
 					pos = data.indexOf('=', pos) + 1;// goes after the = character
 			}
 			
-			final Object value = readValue(false, ',', '}');
+			final Object value = readValue(false, false, ',', '}');
 			table.put(key, value);
 			
 			if (data.charAt(pos) == '}')// end of table
@@ -153,10 +178,13 @@ public final class TomlReader {
 				return list;
 			else if (ch == '\n' || ch == '\t' || ch == ' ')
 				continue;// ignores
-			else
+			else if (ch == '#') {// comment
+				goAfterOrAtEnd('\n');
+				continue;
+			} else
 				pos--;// unreads ch
 				
-			Object v = readValue(false, ',', ']');
+			Object v = readValue(true, false, ',', ']');
 			list.add(v);
 			
 			if (data.charAt(pos) == ']')// end of array
@@ -172,7 +200,7 @@ public final class TomlReader {
 	 * @param acceptEOF true if EOF is normal, false if it should throw an exception
 	 * @param end the characters that marks the end of the value
 	 */
-	Object readValue(boolean acceptEOF, char... end) throws IOException {
+	Object readValue(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
 		int ch = nextChar();
 		switch (ch) {
 			case '[':
@@ -196,9 +224,14 @@ public final class TomlReader {
 			case 't':
 				return readTrueBoolean();
 			default:
-				return readDateOrNumber(true, acceptEOF, end);
+				return readDateOrNumber(acceptComment, acceptEOF, end);
 			case -1:
 				return null;
+			case '#':
+				if (!acceptComment)
+					throw new IOException("Invalid comment at " + getCurrentPosition());
+				goAfterOrAtEnd('\n');
+				return readValue(acceptEOF, acceptComment, end);
 		}
 	}
 	
@@ -209,10 +242,19 @@ public final class TomlReader {
 	 * @param acceptEOF true if EOF is normal, false if it should throw an exception
 	 * @param end the characters that marks the end of the value
 	 */
-	Object readDateOrNumber(boolean firstCharWasRead, boolean acceptEOF, char... end) throws IOException {
-		if (firstCharWasRead)
-			pos--;
-		String str = until(acceptEOF, end);
+	Object readDateOrNumber(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
+		// TODO boolean acceptComment, SUPPRIMER firstCharWasRead -> c'est à la fonction précédente de faire pos-- si
+		// besoin
+		StringBuilder sb = new StringBuilder();
+		for (; pos < data.length(); pos++) {
+			char next = data.charAt(pos++);
+			if (next == '#') {
+				goAfterOrAtEnd('\n');
+				break;
+			}
+			sb.append(next);
+		}
+		String str = sb.toString();
 		try {
 			return Long.parseLong(str);
 		} catch (NumberFormatException ex) {
@@ -396,6 +438,8 @@ public final class TomlReader {
 	
 	/**
 	 * Exactly the same as {@code until(false, c)}.
+	 * 
+	 * @see #until(boolean, char)
 	 */
 	String until(char c) throws EOFException {
 		return until(false, c);
@@ -404,7 +448,7 @@ public final class TomlReader {
 	String until(boolean acceptEOF, char c) throws EOFException {
 		try {
 			int indexOfC = data.indexOf(c, pos);
-			if (indexOfC == -1)// TODO nécessaire ??
+			if (indexOfC == -1 && acceptEOF)
 				return data.substring(pos);// TODO utile ??
 			return data.substring(pos, data.indexOf(c, pos));
 		} catch (IndexOutOfBoundsException ex) {
@@ -466,11 +510,11 @@ public final class TomlReader {
 	void goAt(char c, boolean acceptNewlines) throws IOException {
 		for (; pos < data.length(); pos++) {
 			char ch = data.charAt(pos);
+			if (ch == c)
+				return;
 			if (ch == '\n' && !acceptNewlines) {
 				throw new IOException("Invalid line break after line " + getPreviousLine());
 			}
-			if (ch == c)
-				return;
 		}
 	}
 	
@@ -480,6 +524,14 @@ public final class TomlReader {
 	void goAfter(char c, boolean acceptNewlines) throws IOException {
 		goAt(c, acceptNewlines);
 		pos++;
+	}
+	
+	/**
+	 * Goes after the position of the next character that equals to c, or at the end of the file.
+	 */
+	void goAfterOrAtEnd(char c) throws IOException {
+		int index = data.indexOf(c, pos);
+		pos = (index == -1) ? data.length() : index;
 	}
 	
 	// === Methods for getting the current position in text ===
