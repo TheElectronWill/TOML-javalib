@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -47,21 +49,54 @@ public final class TomlReader {
 									// of the file)
 		while (pos < data.length()) {
 			int firstChar = data.charAt(pos++);// The [ character has already been read by #readTableContent()
-			String key;
+			
+			// -- Reads the key --
 			if (firstChar == '[') {// there are two [
 				pos++;
 			}
-			key = until(']');
+			List<String> keyParts = new LinkedList<>();
+			StringBuilder keyBuilder = new StringBuilder();
+			while (true) {
+				if (pos >= data.length())
+					throw new IOException("Invalid end of file: missing end of key declaration");
+				char next = data.charAt(pos);
+				if (next == '\"') {
+					keyParts.add(keyBuilder.toString().trim());
+					keyBuilder = new StringBuilder();
+					keyParts.add(readBasicString());
+				} else if (next == ']') {
+					keyParts.add(keyBuilder.toString().trim());
+					break;
+				} else if (next == '.') {
+					keyParts.add(keyBuilder.toString().trim());
+					keyBuilder = new StringBuilder();
+				} else {
+					keyBuilder.append(next);
+				}
+			}
 			if (firstChar == '[') {// there were two [
-				if (data.charAt(pos++) != ']')// [[name] is invalid
+				if (data.charAt(pos++) != ']')// there are only one ] that ends the declaration -> error
 					throw new IOException("Missing character ] at " + getCurrentPosition());
 			}
+			
+			// -- Reads the value --
 			Map<String, Object> value = readTableContent();
+			
+			// -- Saves the value --
+			Map currentMap = map;
+			Iterator<String> it = keyParts.iterator();
+			while (it.hasNext()) {
+			
+			}
 			if (firstChar == '[') {// element of a table array
+				
+				for (String part : keyParts) {
+				
+				}
 				// TODO supporter a.b.c
 				// TODO à faire
 			} else {// just a table
-				map.put(key, value);
+				map.put(keyBuilder.toString(), value);
 				// TODO supporter a.b.c
 			}
 		}
@@ -102,7 +137,7 @@ public final class TomlReader {
 						throw new IOException("Invalid end of file: missing = character at " + getCurrentPosition());
 					char next = data.charAt(pos++);
 					if (next == '#')
-						throw new IOException("Invalid comment (missing = character) at " + getCurrentPosition());
+						throw new IOException("Invalid comment: missing = character at " + getCurrentPosition());
 					if (next == '\t' || next == ' ')
 						continue;
 					if (next == '=')
@@ -224,6 +259,7 @@ public final class TomlReader {
 			case 't':
 				return readTrueBoolean();
 			default:
+				pos--;
 				return readDateOrNumber(acceptComment, acceptEOF, end);
 			case -1:
 				return null;
@@ -243,8 +279,6 @@ public final class TomlReader {
 	 * @param end the characters that marks the end of the value
 	 */
 	Object readDateOrNumber(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
-		// TODO boolean acceptComment, SUPPRIMER firstCharWasRead -> c'est à la fonction précédente de faire pos-- si
-		// besoin
 		StringBuilder sb = new StringBuilder();
 		for (; pos < data.length(); pos++) {
 			char next = data.charAt(pos++);
@@ -309,8 +343,17 @@ public final class TomlReader {
 	 * 
 	 * @throws EOFException
 	 */
-	String readLiteralString() throws EOFException {
-		return until('\'');
+	String readLiteralString() throws IOException {
+		StringBuilder sb = new StringBuilder();
+		while (true) {
+			int ch = nextChar();
+			if (ch == -1)
+				throw new IOException("Invalid end of literal string at " + getCurrentPosition());
+			if (ch == '\'')
+				break;
+			sb.append(ch);
+		}
+		return sb.toString();
 	}
 	
 	/**
