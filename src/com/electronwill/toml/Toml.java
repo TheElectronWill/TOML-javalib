@@ -6,12 +6,25 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class Toml {
 	
+	public static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
+			.append(DateTimeFormatter.ISO_LOCAL_DATE)
+			.optionalStart()
+			.appendLiteral('T')
+			.append(DateTimeFormatter.ISO_LOCAL_TIME)
+			.optionalStart()
+			.appendOffsetId()
+			.optionalEnd()
+			.optionalEnd()
+			.toFormatter();
+			
 	private Toml() {}
 	
 	public static String writeToString(Map<String, Object> data) throws IOException {

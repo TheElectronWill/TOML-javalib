@@ -3,7 +3,6 @@ package com.electronwill.toml;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.Iterator;
@@ -12,17 +11,6 @@ import java.util.Map;
 
 public class TomlWriter {
 	
-	private static final DateTimeFormatter TOML_DATE_FORMATTER = new DateTimeFormatterBuilder()
-			.append(DateTimeFormatter.ISO_LOCAL_DATE)
-			.optionalStart()
-			.appendLiteral('T')
-			.append(DateTimeFormatter.ISO_LOCAL_TIME)
-			.optionalStart()
-			.appendOffsetId()
-			.optionalEnd()
-			.optionalEnd()
-			.toFormatter();
-			
 	private final Writer writer;
 	private final int indentSize;
 	private final char indentCharacter;
@@ -95,7 +83,7 @@ public class TomlWriter {
 			if (value instanceof TemporalAccessor) {
 				writer.write(name);
 				writer.write(" = ");
-				writer.write(TOML_DATE_FORMATTER.format((TemporalAccessor) value));
+				writer.write(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
 			} else if (value instanceof String) {
 				String str = (String) value;
 				
@@ -175,7 +163,7 @@ public class TomlWriter {
 				} else if (value instanceof Number) {
 					writeString(value.toString());
 				} else if (value instanceof TemporalAccessor) {
-					writeString(TOML_DATE_FORMATTER.format((TemporalAccessor) value));
+					writeString(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
 				} else if (value instanceof int[]) {
 					writeArray((int[]) value);
 				} else if (value instanceof byte[]) {

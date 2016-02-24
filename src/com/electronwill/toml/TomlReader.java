@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -21,17 +19,6 @@ import java.util.Map;
  */
 public final class TomlReader {
 	
-	private static final DateTimeFormatter TOML_DATE_FORMATTER = new DateTimeFormatterBuilder()
-			.append(DateTimeFormatter.ISO_LOCAL_DATE)
-			.optionalStart()
-			.appendLiteral('T')
-			.append(DateTimeFormatter.ISO_LOCAL_TIME)
-			.optionalStart()
-			.appendOffsetId()
-			.optionalEnd()
-			.optionalEnd()
-			.toFormatter();
-			
 	private final String data;
 	private final List<Integer> newlines;
 	private int pos = 0;
@@ -339,7 +326,7 @@ public final class TomlReader {
 		} else if (maybeDouble) {
 			return Double.parseDouble(str);
 		} else if (maybeDate) {
-			return TOML_DATE_FORMATTER.parseBest(str, ZonedDateTime::from, LocalDate::from, LocalDateTime::from);
+			return Toml.DATE_FORMATTER.parseBest(str, ZonedDateTime::from, LocalDate::from, LocalDateTime::from);
 		} else {
 			throw new IOException("Invalid value at " + getCurrentPosition() + ": " + str);
 		}
