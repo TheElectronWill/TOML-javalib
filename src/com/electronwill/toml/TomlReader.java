@@ -55,7 +55,7 @@ public final class TomlReader {
 	 * <li>A boolean is parsed as a <code>boolean</code></li>
 	 * <li>An integer number is parsed as an <code>int</code> or a <code>long</code> (int if smaller than 10^10, long
 	 * otherwise).</li>
-	 * <li>A decimal number, or a number written with the exponential notation, is parsed as <code>double</code>.</li>
+	 * <li>A decimal number, or a number written with the exponential notation, is parsed as a <code>double</code>.</li>
 	 * <li>A date is parsed as a {@link ZonedDateTime} or a {@link LocalDateTime} or a {@link LocalDate} (depending on
 	 * the informations provided by the data)</li>
 	 * <li>An array (even if it's an array of numbers) is parsed as a {@link List}</li>
