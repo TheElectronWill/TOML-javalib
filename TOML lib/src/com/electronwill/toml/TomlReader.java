@@ -5,9 +5,8 @@ import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +53,7 @@ public final class TomlReader {
 			if (firstChar == '[') {// there are two [
 				pos++;
 			}
-			List<String> keyParts = new LinkedList<>();
+			List<String> keyParts = new ArrayList<>(4);
 			StringBuilder keyBuilder = new StringBuilder();
 			while (true) {
 				if (pos >= data.length())
@@ -83,21 +82,16 @@ public final class TomlReader {
 			Map<String, Object> value = readTableContent();
 			
 			// -- Saves the value --
-			Map currentMap = map;
-			Iterator<String> it = keyParts.iterator();
-			while (it.hasNext()) {
-			
+			Map<String, Object> valueMap = map;// the map that contains the value
+			for (int i = 0; i < keyParts.size() - 1; i++) {
+				String part = keyParts.get(i);
+				valueMap = (Map) map.get(part);
 			}
 			if (firstChar == '[') {// element of a table array
-				
-				for (String part : keyParts) {
-				
-				}
-				// TODO supporter a.b.c
-				// TODO à faire
+				Collection<Map> tableArray = (Collection) valueMap.get(keyParts.get(keyParts.size() - 1));
+				tableArray.add(value);
 			} else {// just a table
-				map.put(keyBuilder.toString(), value);
-				// TODO supporter a.b.c
+				valueMap.put(keyParts.get(keyParts.size() - 1), value);
 			}
 		}
 		return map;
@@ -189,9 +183,30 @@ public final class TomlReader {
 				throw new IOException("Invalid comment in an inline table at " + getCurrentPosition());
 			} else {
 				pos--;// unreads ch
-				key = until(' ', '=', '\t');
-				if (data.charAt(pos) != '=')// if key reading didn't stop at =
-					pos = data.indexOf('=', pos) + 1;// goes after the = character
+				StringBuilder sb = new StringBuilder();
+				boolean needToFindEqual = true;
+				for (; pos < data.length(); pos++) {
+					char next = data.charAt(pos);
+					if (next == ' ' || next == '\t')
+						break;
+					if (next == '=') {
+						needToFindEqual = false;
+						break;
+					}
+					if (next == '#' || next == '\n')
+						throw new IOException("Invalid character in an inline table at " + getCurrentPosition());
+						
+				}
+				if (needToFindEqual) {
+					for (; pos < data.length(); pos++) {
+						char next = data.charAt(pos++);
+						if (next == '=')
+							break;
+						if (next == '#' || next == '\n')
+							throw new IOException("Invalid character in an inline table at " + getCurrentPosition());
+					}
+				}
+				key = sb.toString();
 			}
 			
 			final Object value = readValue(false, false, ',', '}');
@@ -280,27 +295,32 @@ public final class TomlReader {
 	 */
 	Object readDateOrNumber(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
 		StringBuilder sb = new StringBuilder();
+		boolean maybeLong = true, maybeDouble = true, maybeDate = true;
 		for (; pos < data.length(); pos++) {
 			char next = data.charAt(pos++);
 			if (next == '#') {
 				goAfterOrAtEnd('\n');
 				break;
+			} else if (next == '.' || next == 'e') {
+				maybeLong = false;
+			} else if (next == ':' || next == 'T' || next == 'Z') {
+				maybeLong = maybeDouble = false;
 			}
-			sb.append(next);
+			if (next == '_') {
+				maybeDate = false;
+			} else {// don't add the _ to the StringBuilder because it would cause a NumberFormatException
+				sb.append(next);
+			}
 		}
 		String str = sb.toString();
-		try {
-			return Long.parseLong(str);
-		} catch (NumberFormatException ex) {
-			try {
-				return Double.parseDouble(str);
-			} catch (NumberFormatException ex2) {
-				try {
-					return TOML_DATE_FORMATTER.parse(str);
-				} catch (Exception ex3) {
-					throw new IOException("Invalid value at " + getCurrentPosition() + ": " + str);
-				}
-			}
+		if (maybeLong) {
+			return str.length() < 10 ? Integer.parseInt(str) : Long.parseLong(str);
+		} else if (maybeDouble) {
+			return Double.parseDouble(str);
+		} else if (maybeDate) {
+			return TOML_DATE_FORMATTER.parse(str);
+		} else {
+			throw new IOException("Invalid value at " + getCurrentPosition() + ": " + str);
 		}
 	}
 	
@@ -477,56 +497,6 @@ public final class TomlReader {
 			default:
 				throw new IOException("Invalid escape sequence at " + getCurrentPosition() + ": \\" + c);
 		}
-	}
-	
-	/**
-	 * Exactly the same as {@code until(false, c)}.
-	 * 
-	 * @see #until(boolean, char)
-	 */
-	String until(char c) throws EOFException {
-		return until(false, c);
-	}
-	
-	String until(boolean acceptEOF, char c) throws EOFException {
-		try {
-			int indexOfC = data.indexOf(c, pos);
-			if (indexOfC == -1 && acceptEOF)
-				return data.substring(pos);// TODO utile ??
-			return data.substring(pos, data.indexOf(c, pos));
-		} catch (IndexOutOfBoundsException ex) {
-			throw new EOFException("Invalid end of data");
-		}
-	}
-	
-	/**
-	 * Exactly the same as {@code until(false, chars)}.
-	 */
-	String until(char... chars) throws EOFException {
-		return until(false, chars);
-	}
-	
-	/**
-	 * Returns the string containg every character from the current position to the position of one of the given
-	 * character (stops at the first one). The last character is read but the position is NOT incremented after.
-	 * Therefore, after this method is called, the current position is the position of the last character read by this
-	 * method.
-	 */
-	String until(boolean acceptEOF, char... chars) throws EOFException {
-		final int initialPos = pos;
-		for (; pos < data.length(); pos++) {
-			char ch = data.charAt(pos);
-			
-			for (int i = 0; i < chars.length; i++) {
-				if (ch == chars[i]) {
-					return data.substring(initialPos, pos);
-				}
-			}
-		}
-		if (!acceptEOF)
-			throw new EOFException("Invalid end of data");
-			
-		return data.substring(initialPos);
 	}
 	
 	/**
