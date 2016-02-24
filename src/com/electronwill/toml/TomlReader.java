@@ -2,6 +2,9 @@ package com.electronwill.toml;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
@@ -10,6 +13,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Class for reading TOML v0.4.0.
+ * 
+ * @author ElectronWill
+ * 		
+ */
 public final class TomlReader {
 	
 	private static final DateTimeFormatter TOML_DATE_FORMATTER = new DateTimeFormatterBuilder()
@@ -29,7 +38,7 @@ public final class TomlReader {
 	private Map<String, Object> map;
 	
 	/**
-	 * Creates a new TomlReader.
+	 * Creates a new TomlReader with the specified data to read.
 	 * 
 	 * @param data the data to read
 	 * @param newlines a list containing the position of every newlines (\n characters).
@@ -40,7 +49,19 @@ public final class TomlReader {
 	}
 	
 	/**
-	 * Parses TOML data.
+	 * Reads the TOML data as a {@code Map<String, Object>}.
+	 * <h1>Data types</h1>
+	 * <ul>
+	 * <li>A boolean is parsed as a <code>boolean</code></li>
+	 * <li>An integer number is parsed as an <code>int</code> or a <code>long</code> (int if smaller than 10^10, long
+	 * otherwise).</li>
+	 * <li>A decimal number, or a number written with the exponential notation, is parsed as <code>double</code>.</li>
+	 * <li>A date is parsed as a {@link ZonedDateTime} or a {@link LocalDateTime} or a {@link LocalDate} (depending on
+	 * the informations provided by the data)</li>
+	 * <li>An array (even if it's an array of numbers) is parsed as a {@link List}</li>
+	 * <li>A table is parsed as a {@code Map<String, Object>}</li>
+	 * </ul>
+	 * 
 	 */
 	public Map<String, Object> read() throws IOException {
 		map = readTableContent();// reads everything until the first table (remember that non-inline tables are declared
@@ -102,7 +123,7 @@ public final class TomlReader {
 	/**
 	 * Reads the content of a table. Stops at the next table (reads the [ character), or at the end of the file.
 	 */
-	Map<String, Object> readTableContent() throws IOException {
+	private Map<String, Object> readTableContent() throws IOException {
 		HashMap<String, Object> table = new HashMap<>();
 		while (true) {
 			final int ch = nextChar();
@@ -162,7 +183,7 @@ public final class TomlReader {
 	/**
 	 * Reads an inline table.
 	 */
-	Map<String, Object> readInlineTable() throws IOException {
+	private Map<String, Object> readInlineTable() throws IOException {
 		Map<String, Object> table = new HashMap<>();
 		while (true) {
 			final int ch = nextChar();
@@ -178,7 +199,7 @@ public final class TomlReader {
 			} else if (ch == '\t' || ch == ' ') {
 				continue;// ignores
 			} else if (ch == '\n') {
-				throw new IOException("Invalid line break in an inline table, at the end of line " + (getCurrentLine() - 1));
+				throw new IOException("Invalid line break in an inline table, at the end of line " + (getPreviousLine()));
 			} else if (ch == '#') {
 				throw new IOException("Invalid comment in an inline table at " + getCurrentPosition());
 			} else {
@@ -220,7 +241,7 @@ public final class TomlReader {
 	/**
 	 * Reads an array of values.
 	 */
-	List<Object> readArray() throws IOException {
+	private List<Object> readArray() throws IOException {
 		List<Object> list = new ArrayList();
 		while (true) {
 			int ch = nextChar();
@@ -250,7 +271,7 @@ public final class TomlReader {
 	 * @param acceptEOF true if EOF is normal, false if it should throw an exception
 	 * @param end the characters that marks the end of the value
 	 */
-	Object readValue(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
+	private Object readValue(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
 		int ch = nextChar();
 		switch (ch) {
 			case '[':
@@ -293,7 +314,7 @@ public final class TomlReader {
 	 * @param acceptEOF true if EOF is normal, false if it should throw an exception
 	 * @param end the characters that marks the end of the value
 	 */
-	Object readDateOrNumber(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
+	private Object readDateOrNumber(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
 		StringBuilder sb = new StringBuilder();
 		boolean maybeLong = true, maybeDouble = true, maybeDate = true;
 		for (; pos < data.length(); pos++) {
@@ -318,7 +339,7 @@ public final class TomlReader {
 		} else if (maybeDouble) {
 			return Double.parseDouble(str);
 		} else if (maybeDate) {
-			return TOML_DATE_FORMATTER.parse(str);
+			return TOML_DATE_FORMATTER.parseBest(str, ZonedDateTime::from, LocalDate::from, LocalDateTime::from);
 		} else {
 			throw new IOException("Invalid value at " + getCurrentPosition() + ": " + str);
 		}
@@ -326,7 +347,7 @@ public final class TomlReader {
 	
 	// === Methods for reading booleans ===
 	
-	boolean readFalseBoolean() throws IOException {
+	private boolean readFalseBoolean() throws IOException {
 		String boolEnd;
 		try {
 			boolEnd = data.substring(pos, pos + 4);
@@ -341,7 +362,7 @@ public final class TomlReader {
 		return false;
 	}
 	
-	boolean readTrueBoolean() throws IOException {
+	private boolean readTrueBoolean() throws IOException {
 		String boolEnd;
 		try {
 			boolEnd = data.substring(pos, pos + 3);
@@ -363,7 +384,7 @@ public final class TomlReader {
 	 * 
 	 * @throws EOFException
 	 */
-	String readLiteralString() throws IOException {
+	private String readLiteralString() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		while (true) {
 			int ch = nextChar();
@@ -379,7 +400,7 @@ public final class TomlReader {
 	/**
 	 * Reads a literal multi-line String, which doesn't support escaping.
 	 */
-	String readLiteralMultiString() throws IOException {
+	private String readLiteralMultiString() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		while (true) {
@@ -405,7 +426,7 @@ public final class TomlReader {
 	/**
 	 * Reads a basic String which supports escaping.
 	 */
-	String readBasicString() throws IOException {
+	private String readBasicString() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false;
 		while (true) {
@@ -430,7 +451,7 @@ public final class TomlReader {
 	/**
 	 * Reads a literal multi-line String, which supports escaping.
 	 */
-	String readBasicMultiString() throws IOException {
+	private String readBasicMultiString() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false, first = true;
 		while (true) {
@@ -460,7 +481,7 @@ public final class TomlReader {
 	
 	// === Utilities for manipulating characters and Strings ===
 	
-	char unescape(int c) throws IOException {
+	private char unescape(int c) throws IOException {
 		if (c == -1)
 			throw new EOFException("Invalid end of data at " + getCurrentPosition());
 		switch (c) {
@@ -502,7 +523,7 @@ public final class TomlReader {
 	/**
 	 * Gets the next char, or -1 if EOF is reached, and increments the position.
 	 */
-	int nextChar() {
+	private int nextChar() {
 		if (pos >= data.length())
 			return -1;
 		return data.charAt(pos++);
@@ -511,7 +532,7 @@ public final class TomlReader {
 	/**
 	 * Gets the next char, or -1 if EOF is reached, but does not increment the position.
 	 */
-	int seekNext(int n) {
+	private int seekNext(int n) {
 		if (pos >= data.length())
 			return -1;
 		return data.charAt(pos + (n - 1));
@@ -520,7 +541,7 @@ public final class TomlReader {
 	/**
 	 * Goes at the position of the next character that equals to c.
 	 */
-	void goAt(char c, boolean acceptNewlines) throws IOException {
+	private void goAt(char c, boolean acceptNewlines) throws IOException {
 		for (; pos < data.length(); pos++) {
 			char ch = data.charAt(pos);
 			if (ch == c)
@@ -534,7 +555,7 @@ public final class TomlReader {
 	/**
 	 * Goes after the position of the next character that equals to c.
 	 */
-	void goAfter(char c, boolean acceptNewlines) throws IOException {
+	private void goAfter(char c, boolean acceptNewlines) throws IOException {
 		goAt(c, acceptNewlines);
 		pos++;
 	}
@@ -542,7 +563,7 @@ public final class TomlReader {
 	/**
 	 * Goes after the position of the next character that equals to c, or at the end of the file.
 	 */
-	void goAfterOrAtEnd(char c) throws IOException {
+	private void goAfterOrAtEnd(char c) throws IOException {
 		int index = data.indexOf(c, pos);
 		pos = (index == -1) ? data.length() : index;
 	}
@@ -553,7 +574,7 @@ public final class TomlReader {
 	 * Constructs a string indicating the current position in the data. The format is:
 	 * {@code line <line number> position <position on line>}. For example "line 10 position 25".
 	 */
-	String getCurrentPosition() {
+	private String getCurrentPosition() {
 		int previousLineStart = 0;
 		for (int i = 0; i < newlines.size(); i++) {
 			int newLinePosition = newlines.get(i);
@@ -568,14 +589,14 @@ public final class TomlReader {
 	/**
 	 * Gets the number of the previous line.
 	 */
-	int getPreviousLine() {
+	private int getPreviousLine() {
 		return getCurrentLine() - 1;
 	}
 	
 	/**
 	 * Gets the number of the current line.
 	 */
-	int getCurrentLine() {
+	private int getCurrentLine() {
 		for (int i = 0; i < newlines.size(); i++) {
 			int newLinePosition = newlines.get(i);
 			if (pos < newLinePosition)
