@@ -12,8 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class Toml {
+/**
+ * Utility class for reading and writing TOML v0.4.0.
+ * 
+ * @author ElectronWill
+ * 		
+ */
+public final class Toml {
 	
+	/**
+	 * A DateTimeFormatter that uses the TOML format.
+	 */
 	public static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
 			.append(DateTimeFormatter.ISO_LOCAL_DATE)
 			.optionalStart()
@@ -27,20 +36,59 @@ public class Toml {
 			
 	private Toml() {}
 	
+	/**
+	 * Writes the specified data to a String, in the TOML format.
+	 * 
+	 * @param data the data to write
+	 * @return a String that contains the data in the TOML format.
+	 * @throws IOException if an error occurs
+	 */
 	public static String writeToString(Map<String, Object> data) throws IOException {
 		FastStringWriter writer = new FastStringWriter();
 		write(data, writer);
 		return writer.toString();
 	}
 	
-	public static void write(Map<String, Object> data, Writer out) throws IOException {
-	
+	/**
+	 * Writes the specified data to a Writer, in the TOML format and with the default parameters. This is the same as
+	 * {@code write(data, writer, 1, false)}.
+	 * 
+	 * @param data the data to write
+	 * @param writer where to write the data
+	 * @throws IOException if an error occurs
+	 */
+	public static void write(Map<String, Object> data, Writer writer) throws IOException {
+		TomlWriter tw = new TomlWriter(writer);
+		tw.write(data);
 	}
 	
 	/**
-	 * WARNING: toml must contains ONLY \n, not "\r\n" nor \r.
+	 * Writes the specified data to a Writer, in the TOML format and with the specified parameters.
+	 * 
+	 * @param data the data to write
+	 * @param writer where to write the data
+	 * @param indentSize the indentation size, ie the number of times the indentation character is repeated in one
+	 *        indent.
+	 * @param indentWithSpaces true to indent with spaces, false to indent with tabs
+	 * @throws IOException if an error occurs
 	 */
-	public static Map<String, Object> read(String toml) throws IOException {
+	public static void write(Map<String, Object> data, Writer writer, int indentSize, boolean indentWithSpaces) throws IOException {
+		TomlWriter tw = new TomlWriter(writer, indentSize, indentWithSpaces);
+		tw.write(data);
+	}
+	
+	/**
+	 * Reads a String that contains TOML data.
+	 * <p>
+	 * <b>WARNING: the <code>String <i>toml</i></code> must indicate newlines ONLY with the '\n' (aka LF) character. It
+	 * must not contains the '\r' character nor the "\r\n" sequence.</b> This method does not check if
+	 * <code>String <i>toml</i></code> contains the forbidden '\r' character. It's up to the caller to do it.
+	 * </p>
+	 * 
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if an error occurs
+	 */
+	public static Map<String, Object> readLineFeedOnlyString(String toml) throws IOException {
 		List<Integer> newlines = new ArrayList<>();
 		for (int i = 0; i < toml.length(); i++) {
 			if (toml.charAt(i) == '\n')
@@ -50,10 +98,27 @@ public class Toml {
 		return tr.read();
 	}
 	
+	/**
+	 * Reads TOML data from an InputStream. This method may contains "\r\n" sequence, because any "\r\n" sequence found
+	 * in the data read by the Reader is replaced by a single '\n' character.
+	 * 
+	 * @param in the InputStream to read data from
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if an error occurs
+	 */
 	public static Map<String, Object> read(InputStream in) throws IOException {
 		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available());
 	}
 	
+	/**
+	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>. This method may contains "\r\n"
+	 * sequence, because any "\r\n" sequence found in the data read by the Reader is replaced by a single '\n'
+	 * character.
+	 * 
+	 * @param in the InputStream to read data from
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if an error occurs
+	 */
 	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException {
 		StringBuilder sb = new StringBuilder(stringBuilderSize);
 		List<Integer> newlines = new ArrayList<>();

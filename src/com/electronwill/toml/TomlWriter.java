@@ -9,7 +9,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class TomlWriter {
+/**
+ * Class for writing TOML v0.4.0.
+ * 
+ * @author ElectronWill
+ * 		
+ */
+public final class TomlWriter {
 	
 	private final Writer writer;
 	private final int indentSize;
@@ -39,6 +45,12 @@ public class TomlWriter {
 		this.indentCharacter = indentWithSpaces ? ' ' : '\t';
 	}
 	
+	/**
+	 * Writes the specified data in the TOML format.
+	 * 
+	 * @param data the data to write
+	 * @throws IOException if an error occurs
+	 */
 	public void write(Map<String, Object> data) throws IOException {
 		for (Map.Entry<String, Object> entry : data.entrySet()) {
 			String name = entry.getKey();
