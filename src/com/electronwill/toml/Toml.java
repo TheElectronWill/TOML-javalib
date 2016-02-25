@@ -91,6 +91,7 @@ public final class Toml {
 	public static void write(Map<String, Object> data, Writer writer) throws IOException {
 		TomlWriter tw = new TomlWriter(writer);
 		tw.write(data);
+		tw.close();
 	}
 	
 	/**
@@ -106,6 +107,7 @@ public final class Toml {
 	public static void write(Map<String, Object> data, Writer writer, int indentSize, boolean indentWithSpaces) throws IOException {
 		TomlWriter tw = new TomlWriter(writer, indentSize, indentWithSpaces);
 		tw.write(data);
+		tw.close();
 	}
 	
 	/**
