@@ -55,18 +55,17 @@ public final class TomlReader {
 									// at the end of the file, because a table ends with another table, or with the end
 									// of the file)
 		while (pos < data.length()) {
-			int firstChar = data.charAt(pos++);// The [ character has already been read by #readTableContent()
-			
+			// The [ character has already been read by #readTableContent()
+			int firstChar = data.charAt(pos);// the first character of the key, or a [ if it's the beginning of a table
+												// array element
 			// -- Reads the key --
 			if (firstChar == '[') {// there are two [
-				pos++;
+				pos++;// skips the second [
 			}
 			List<String> keyParts = new ArrayList<>(4);
 			StringBuilder keyBuilder = new StringBuilder();
 			while (true) {
-				if (pos >= data.length())
-					throw new IOException("Invalid end of file: missing end of key declaration");
-				char next = data.charAt(pos);
+				int next = nextChar();
 				if (next == '\"') {
 					keyParts.add(keyBuilder.toString().trim());
 					keyBuilder = new StringBuilder();
@@ -77,6 +76,10 @@ public final class TomlReader {
 				} else if (next == '.') {
 					keyParts.add(keyBuilder.toString().trim());
 					keyBuilder = new StringBuilder();
+				} else if (next == '#') {
+					throw new IOException("Invalid comment at " + getCurrentPosition());
+				} else if (next == -1) {
+					throw new IOException("Invalid end of file: missing end of key declaration");
 				} else {
 					keyBuilder.append(next);
 				}
@@ -131,19 +134,19 @@ public final class TomlReader {
 				goAfterOrAtEnd('\n');
 				continue;
 			} else {
-				pos--;// unreads ch
+				pos--;// the next char will still be ch
 				// Reads the name of the key:
 				StringBuilder keyBuilder = new StringBuilder();
 				while (true) {
-					if (pos >= data.length())
-						throw new IOException("Invalid end of file: missing = character at " + getCurrentPosition());
-					char next = data.charAt(pos++);
+					int next = nextChar();
 					if (next == '#')
 						throw new IOException("Invalid comment: missing = character at " + getCurrentPosition());
 					if (next == '\t' || next == ' ')
 						continue;
 					if (next == '=')
 						break;
+					if (next == -1)
+						throw new IOException("Invalid end of file: missing = character at " + getCurrentPosition());
 					else
 						keyBuilder.append(next);
 				}
