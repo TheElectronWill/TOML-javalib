@@ -1,8 +1,12 @@
 package com.electronwill.toml;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +19,7 @@ import java.util.Map;
 /**
  * Utility class for reading and writing TOML v0.4.0.
  * 
- * @author ElectronWill
+ * @author TheElectronWill
  * 		
  */
 public final class Toml {
@@ -50,8 +54,34 @@ public final class Toml {
 	}
 	
 	/**
-	 * Writes the specified data to a Writer, in the TOML format and with the default parameters. This is the same as
-	 * {@code write(data, writer, 1, false)}.
+	 * Writes data to a File, in the TOML format and with the UTF-8 encoding. The default indentation parameters are
+	 * used, ie each indent is one tab character.
+	 * 
+	 * @param data the data to write
+	 * @param file where to write the data
+	 * @throws IOException if an error occurs
+	 */
+	public static void write(Map<String, Object> data, File file) throws IOException {
+		FileOutputStream out = new FileOutputStream(file);
+		write(data, out);
+	}
+	
+	/**
+	 * Writes data to an OutputStream, in the TOML format and with the UTF-8 encoding. The default indentation
+	 * parameters are used, ie each indent is one tab character.
+	 * 
+	 * @param data the data to write
+	 * @param file where to write the data
+	 * @throws IOException if an error occurs
+	 */
+	public static void write(Map<String, Object> data, OutputStream out) throws IOException {
+		OutputStreamWriter writer = new OutputStreamWriter(out, StandardCharsets.UTF_8);
+		write(data, writer);
+	}
+	
+	/**
+	 * Writes data to a Writer, in the TOML format and with the default parameters, ie each indent is 1 tab character.
+	 * This is the same as {@code write(data, writer, 1, false)}.
 	 * 
 	 * @param data the data to write
 	 * @param writer where to write the data

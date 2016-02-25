@@ -11,7 +11,7 @@ import java.util.Deque;
  * into <tt>\n</tt>. The {@link #lookAhead()} allows for getting the next character without incrementing the read
  * position.
  * 
- * @author ElectronWill
+ * @author TheElectronWill
  * 		
  */
 public final class SimpleReader {

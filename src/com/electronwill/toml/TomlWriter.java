@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Class for writing TOML v0.4.0.
  * 
- * @author ElectronWill
+ * @author TheElectronWill
  * 		
  */
 public final class TomlWriter {
@@ -132,26 +132,6 @@ public final class TomlWriter {
 		}
 		indentationLevel--;
 		newLine();
-	}
-	
-	private void newLine() throws IOException {
-		writer.write('\n');
-	}
-	
-	private void write(char c) throws IOException {
-		writer.write(c);
-	}
-	
-	private void write(String str) throws IOException {
-		writer.write(str);
-	}
-	
-	private void indent() throws IOException {
-		for (int i = 0; i < indentationLevel; i++) {
-			for (int j = 0; j < indentSize; j++) {
-				writer.write(indentCharacter);
-			}
-		}
 	}
 	
 	private void writeKey(String key) throws IOException {
@@ -280,6 +260,26 @@ public final class TomlWriter {
 		} else {
 			// TODO Should we throw an Exception or write value.toString()??
 			writeString(value.toString());
+		}
+	}
+	
+	private void newLine() throws IOException {
+		writer.write('\n');
+	}
+	
+	private void write(char c) throws IOException {
+		writer.write(c);
+	}
+	
+	private void write(String str) throws IOException {
+		writer.write(str);
+	}
+	
+	private void indent() throws IOException {
+		for (int i = 0; i < indentationLevel; i++) {
+			for (int j = 0; j < indentSize; j++) {
+				writer.write(indentCharacter);
+			}
 		}
 	}
 	

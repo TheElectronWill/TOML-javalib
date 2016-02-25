@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Class for reading TOML v0.4.0.
  * 
- * @author ElectronWill
+ * @author TheElectronWill
  * 		
  */
 public final class TomlReader {
