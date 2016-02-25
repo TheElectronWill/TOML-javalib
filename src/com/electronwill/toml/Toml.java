@@ -168,8 +168,8 @@ public final class Toml {
 		
 		char[] buf = new char[8192];
 		int read;
+		boolean wasCR = false;
 		while ((read = reader.read(buf)) != -1) {
-			boolean wasCR = false;
 			for (char c : buf) {
 				if (wasCR) {
 					if (c != '\n')
@@ -183,7 +183,6 @@ public final class Toml {
 					sb.append(c);
 				}
 			}
-			sb.append(buf, 0, read);
 		}
 		
 		TomlReader tr = new TomlReader(sb.toString(), newlines);
