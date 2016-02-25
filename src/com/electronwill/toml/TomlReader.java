@@ -31,6 +31,7 @@ public final class TomlReader {
 	 * @param newlines a list containing the position of every newlines (\n characters).
 	 */
 	public TomlReader(String data, List<Integer> newlines) {
+		System.out.println(data);// DEBUG
 		this.data = data;
 		this.newlines = newlines;
 	}
@@ -65,7 +66,9 @@ public final class TomlReader {
 			List<String> keyParts = new ArrayList<>(4);
 			StringBuilder keyBuilder = new StringBuilder();
 			while (true) {
-				int next = nextChar();
+				if (pos >= data.length())
+					throw new IOException("Invalid end of file: missing end of key declaration");
+				char next = data.charAt(pos++);
 				if (next == '\"') {
 					keyParts.add(keyBuilder.toString().trim());
 					keyBuilder = new StringBuilder();
@@ -78,8 +81,6 @@ public final class TomlReader {
 					keyBuilder = new StringBuilder();
 				} else if (next == '#') {
 					throw new IOException("Invalid comment at " + getCurrentPosition());
-				} else if (next == -1) {
-					throw new IOException("Invalid end of file: missing end of key declaration");
 				} else {
 					keyBuilder.append(next);
 				}
@@ -116,11 +117,14 @@ public final class TomlReader {
 	private Map<String, Object> readTableContent() throws IOException {
 		HashMap<String, Object> table = new HashMap<>();
 		while (true) {
-			final int ch = nextChar();
+			if (pos >= data.length())
+				return table;
+				
+			char ch = data.charAt(pos++);
 			String key = null;
 			Object value = null;
 			
-			if (ch == '[' || ch == -1) {
+			if (ch == '[') {
 				return table;
 			} else if (ch == '\"') {
 				key = readBasicString();
@@ -138,7 +142,9 @@ public final class TomlReader {
 				// Reads the name of the key:
 				StringBuilder keyBuilder = new StringBuilder();
 				while (true) {
-					int next = nextChar();
+					if (pos >= data.length())
+						throw new IOException("Invalid end of file: missing = character at " + getCurrentPosition());
+					char next = data.charAt(pos++);
 					if (next == '#')
 						throw new IOException("Invalid comment: missing = character at " + getCurrentPosition());
 					if (next == '\t' || next == ' ')
@@ -176,7 +182,10 @@ public final class TomlReader {
 	private Map<String, Object> readInlineTable() throws IOException {
 		Map<String, Object> table = new HashMap<>();
 		while (true) {
-			final int ch = nextChar();
+			if (pos >= data.length())
+				throw new IOException("Invalid end of data: expected end of inline table");
+				
+			final char ch = data.charAt(pos++);
 			final String key;
 			if (ch == '}') {// end of table
 				return table;
@@ -234,7 +243,10 @@ public final class TomlReader {
 	private List<Object> readArray() throws IOException {
 		List<Object> list = new ArrayList();
 		while (true) {
-			int ch = nextChar();
+			if (pos >= data.length())
+				throw new IOException("Invalid end of data: expected end of array");
+				
+			char ch = data.charAt(pos++);
 			if (ch == ']')// end of array
 				return list;
 			else if (ch == '\n' || ch == '\t' || ch == ' ')
@@ -262,7 +274,9 @@ public final class TomlReader {
 	 * @param end the characters that marks the end of the value
 	 */
 	private Object readValue(boolean acceptComment, boolean acceptEOF, char... end) throws IOException {
-		int ch = nextChar();
+		if (pos >= data.length())
+			return null;
+		char ch = data.charAt(pos++);
 		switch (ch) {
 			case '[':
 				return readArray();
@@ -287,8 +301,6 @@ public final class TomlReader {
 			default:
 				pos--;
 				return readDateOrNumber(acceptComment, acceptEOF, end);
-			case -1:
-				return null;
 			case '#':
 				if (!acceptComment)
 					throw new IOException("Invalid comment at " + getCurrentPosition());
@@ -308,7 +320,7 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		boolean maybeLong = true, maybeDouble = true, maybeDate = true;
 		for (; pos < data.length(); pos++) {
-			char next = data.charAt(pos++);
+			char next = data.charAt(pos);
 			if (next == '#') {
 				goAfterOrAtEnd('\n');
 				break;
@@ -323,7 +335,7 @@ public final class TomlReader {
 				sb.append(next);
 			}
 		}
-		String str = sb.toString();
+		String str = sb.toString().trim();
 		if (maybeLong) {
 			return str.length() < 10 ? Integer.parseInt(str) : Long.parseLong(str);
 		} else if (maybeDouble) {
@@ -377,9 +389,9 @@ public final class TomlReader {
 	private String readLiteralString() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		while (true) {
-			int ch = nextChar();
-			if (ch == -1)
+			if (pos >= data.length())
 				throw new IOException("Invalid end of literal string at " + getCurrentPosition());
+			char ch = data.charAt(pos++);
 			if (ch == '\'')
 				break;
 			sb.append(ch);
@@ -394,15 +406,15 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		while (true) {
-			int ch = nextChar();
+			if (pos >= data.length())
+				throw new IOException("Invalid end of data: expected end of multiline literal string");
+			char ch = data.charAt(pos++);
 			if (first) {
 				first = false;
 				if (ch == '\n') {// skips the first newline
 					continue;
 				}
 			}
-			if (ch == -1)
-				throw new EOFException("Invalid end of data");
 			if (ch == '\'') {
 				if (seekNext(1) != '\'' && seekNext(2) != '\'')
 					throw new IOException("Invalid end of multi-line string at " + getCurrentPosition());
@@ -420,9 +432,9 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false;
 		while (true) {
-			int ch = nextChar();
-			if (ch == -1)
+			if (pos >= data.length())
 				throw new EOFException("Invalid end of data");
+			char ch = data.charAt(pos++);
 			if (ch == '\n')
 				throw new IOException("Invalid line break after line " + getPreviousLine());
 			if (escape) {
@@ -445,15 +457,15 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false, first = true;
 		while (true) {
-			int ch = nextChar();
+			if (pos > data.length())
+				throw new IOException("Invalid end of data: expected end of multiline basic string");
+			char ch = data.charAt(pos++);
 			if (first) {
 				first = false;
 				if (ch == '\n') {// skips the first newline
 					continue;
 				}
 			}
-			if (ch == -1)
-				throw new EOFException("Invalid end of data");
 			if (escape) {
 				sb.append(unescape(ch));
 				escape = false;
@@ -508,15 +520,6 @@ public final class TomlReader {
 			default:
 				throw new IOException("Invalid escape sequence at " + getCurrentPosition() + ": \\" + c);
 		}
-	}
-	
-	/**
-	 * Gets the next char, or -1 if EOF is reached, and increments the position.
-	 */
-	private int nextChar() {
-		if (pos >= data.length())
-			return -1;
-		return data.charAt(pos++);
 	}
 	
 	/**
