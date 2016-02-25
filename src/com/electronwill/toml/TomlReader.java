@@ -326,7 +326,7 @@ public final class TomlReader {
 		} else if (maybeDouble) {
 			return Double.parseDouble(str);
 		} else if (maybeDate) {
-			return Toml.DATE_FORMATTER.parseBest(str, ZonedDateTime::from, LocalDate::from, LocalDateTime::from);
+			return Toml.DATE_FORMATTER.parseBest(str, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
 		} else {
 			throw new IOException("Invalid value at " + getCurrentPosition() + ": " + str);
 		}
