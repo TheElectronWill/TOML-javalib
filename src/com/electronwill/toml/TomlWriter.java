@@ -17,7 +17,7 @@ public final class TomlWriter {
 	private final Writer writer;
 	private final int indentSize;
 	private final char indentCharacter;
-	private int indentationLevel = 0;
+	private int indentationLevel = -1;// to prevent indenting first level
 	
 	/**
 	 * Creates a new TomlWriter with the defaults parameters. This is exactly the same as
