@@ -1,6 +1,7 @@
 package com.electronwill.toml;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -129,8 +130,20 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads TOML data from an InputStream. This method may contains "\r\n" sequence, because any "\r\n" sequence found
-	 * in the data read by the Reader is replaced by a single '\n' character.
+	 * Reads TOML data from an UTF-8 encoded File. The data may contains the "\r\n" sequence, because any "\r\n"
+	 * sequence found in the data read by the Reader is replaced by a single '\n' character.
+	 * 
+	 * @param file the File to read data from
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if an error occurs
+	 */
+	public static Map<String, Object> read(File file) throws IOException {
+		return read(new FileInputStream(file));
+	}
+	
+	/**
+	 * Reads TOML data from an UTF-8 encoded InputStream. The data may contains the "\r\n" sequence, because any "\r\n"
+	 * sequence found in the data read by the Reader is replaced by a single '\n' character.
 	 * 
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -141,7 +154,7 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>. This method may contains "\r\n"
+	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>. The data may contains the "\r\n"
 	 * sequence, because any "\r\n" sequence found in the data read by the Reader is replaced by a single '\n'
 	 * character.
 	 * 
