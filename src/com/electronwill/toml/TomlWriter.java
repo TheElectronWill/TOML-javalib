@@ -167,17 +167,16 @@ public final class TomlWriter {
 	
 	private void writeString(String str) throws IOException {
 		if (str.indexOf('\'') == -1)
-			str = '\'' + str + '\'';
+			write('\'' + str + '\'');
 		else
-			str = escape('\"', str, '\"');
-		write(str);
+			write(escape('\"', str, '\"'));
 	}
 	
 	private void writeArray(Collection c) throws IOException {
 		write('[');
 		for (Object element : c) {
 			writeValue(element);
-			write(",");
+			write(", ");
 		}
 		write(']');
 	}
@@ -249,7 +248,7 @@ public final class TomlWriter {
 		write('[');
 		for (double element : array) {
 			write(String.valueOf(element));
-			write(",");
+			write(", ");
 		}
 		write(']');
 	}
