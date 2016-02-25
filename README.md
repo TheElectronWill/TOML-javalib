@@ -24,5 +24,5 @@ You may also use the TomlReader and TomlWriter classes directly.
 **Warning:** the TomlReader does not support the "\r\n" sequence, nor the '\r' character. New lines must be indicated by the '\n' character.
 
 ## What does currently work?
-The TomlWriter works pretty fine, and is verty fast.  
+The TomlWriter works pretty fine, and is very fast.  
 The TomlReader currently... doesn't work at all :( But don't worry, I'm working on it.
