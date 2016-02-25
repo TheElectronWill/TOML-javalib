@@ -2,11 +2,8 @@ package com.electronwill.toml;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,161 +43,106 @@ public final class TomlWriter {
 	}
 	
 	/**
+	 * Closes the underlying writer, flushing it first.
+	 * 
+	 * @throws IOException if an error occurs
+	 */
+	public void close() throws IOException {
+		writer.close();
+	}
+	
+	/**
+	 * Flushes the underlying writer.
+	 * 
+	 * @throws IOException if an error occurs
+	 */
+	public void flush() throws IOException {
+		writer.flush();
+	}
+	
+	/**
 	 * Writes the specified data in the TOML format.
 	 * 
 	 * @param data the data to write
 	 * @throws IOException if an error occurs
 	 */
 	public void write(Map<String, Object> data) throws IOException {
-		for (Map.Entry<String, Object> entry : data.entrySet()) {
-			String name = entry.getKey();
-			Object value = entry.getValue();
-			if (value instanceof Map) {
-				writer.write('[');
-				writer.write(name);
-				writer.write(']');
-				writer.write('\n');
-				write((Map) value);
-				writer.write('\n');
-			} else if (value instanceof Collection) {
-				Collection c = (Collection) value;
-				if (c.isEmpty()) {
-					writer.write(name);
-					writer.write(" = []\n");
-					continue;
-				}
-				Iterator it = c.iterator();
-				Object first = it.next();
-				if (first instanceof Map) {
-					writer.write("[[");
-					writer.write(name);
-					writer.write("]]");
-					write((Map) first);
-					while (it.hasNext()) {
-						Map nextMap = (Map) it.next();
-						writer.write("[[");
-						writer.write(name);
-						writer.write("]]");
-						write(nextMap);
-					}
-				} else {
-					writeValue(first);
-					writer.write(", ");
-					while (it.hasNext()) {
-						writeValue(it.next());
-						writer.write(", ");
-					}
-				}
-			}
-			if (value instanceof TemporalAccessor) {
-				writer.write(name);
-				writer.write(" = ");
-				writer.write(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
-			} else if (value instanceof String) {
-				String str = (String) value;
-				
-				if (str.indexOf('\'') == -1)
-					str = '\'' + str + '\'';
-				else
-					str = escape('\"', str, '\"');
-					
-				writer.write(" = ");
-				writer.write(str);
-			} else if (value instanceof List<?>) {
-				writer.write(name);
-			}
-			if (value instanceof Number) {
-				writer.write(name);
-				writer.write(" ");
-				writer.write(value.toString());
-			}
-		}
+		writeTableContent(data);
 	}
 	
 	private void writeTableContent(Map<String, Object> table) throws IOException {
+		indentationLevel++;
 		for (Map.Entry<String, Object> entry : table.entrySet()) {
 			String name = entry.getKey();
 			Object value = entry.getValue();
 			if (value instanceof Collection) {
 				Collection c = (Collection) value;
 				if (!c.isEmpty() && c.iterator().next() instanceof Map) {// array of tables
+					indentationLevel++;
 					for (Object element : c) {
-						writer.write("[[");
-						writer.write(name);
-						writer.write("]]\n");
+						indent();
+						write("[[");
+						writeKey(name);
+						write("]]\n");
 						Map<String, Object> map = (Map) element;
 						writeTableContent(map);
-						writer.write('\n');
 					}
+					indentationLevel--;
 				} else {// normal array
-					writer.write('[');
-					for (Object element : c) {
-						writeValue(element);
-					}
-					writer.write(']');
-					writer.write('\n');
+					indent();
+					writeKey(name);
+					write(" = ");
+					writeArray(c);
 				}
 			} else if (value instanceof Object[]) {
 				Object[] array = (Object[]) value;
 				if (array.length > 0 && array[0] instanceof Map) {// array of tables
+					indentationLevel++;
 					for (Object element : array) {
-						writer.write("[[");
-						writer.write(name);
-						writer.write("]]\n");
+						indent();
+						write("[[");
+						writeKey(name);
+						write("]]\n");
 						Map<String, Object> map = (Map) element;
 						writeTableContent(map);
-						writer.write('\n');
 					}
+					indentationLevel--;
 				} else {// normal array
-					writer.write('[');
-					for (Object element : array) {
-						writeValue(element);
-					}
-					writer.write(']');
-					writer.write('\n');
+					indent();
+					writeKey(name);
+					write(" = ");
+					writeArray(array);
 				}
 			} else if (value instanceof Map) {
 				indentationLevel++;
-				writer.write("\n[");
-				writer.write(name);
-				writer.write("]");
-				writer.write('\n');
+				indent();
+				write('[');
+				writeKey(name);
+				write(']');
+				newLine();
 				writeTableContent((Map) value);
-				writer.write('\n');
+				indentationLevel--;
 			} else {
-				writer.write(name);
-				writer.write(" = ");
-				if (value instanceof String) {
-					writeString((String) value);
-				} else if (value instanceof Number) {
-					writeString(value.toString());
-				} else if (value instanceof TemporalAccessor) {
-					writeString(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
-				} else if (value instanceof int[]) {
-					writeArray((int[]) value);
-				} else if (value instanceof byte[]) {
-					writeArray((byte[]) value);
-				} else if (value instanceof short[]) {
-					writeArray((short[]) value);
-				} else if (value instanceof char[]) {
-					writeArray((char[]) value);
-				} else if (value instanceof long[]) {
-					writeArray((long[]) value);
-				} else if (value instanceof float[]) {
-					writeArray((float[]) value);
-				} else if (value instanceof double[]) {
-					writeArray((double[]) value);
-				} else {
-					// TODO What should we do: throw an Exception or write value.toString() ?
-					writeString(value.toString());
-				}
-				writer.write('\n');
+				indent();
+				writeKey(name);
+				write(" = ");
+				writeValue(value);
 			}
+			newLine();
 		}
+		indentationLevel--;
+		newLine();
 	}
 	
-	private void writeIndented(String str) throws IOException {// TODO utiliser ça
-		indent();
+	private void newLine() throws IOException {
+		writer.write('\n');
+	}
+	
+	private void write(char c) throws IOException {
+		writer.write(c);
+	}
+	
+	private void write(String str) throws IOException {
 		writer.write(str);
 	}
 	
@@ -212,184 +154,133 @@ public final class TomlWriter {
 		}
 	}
 	
+	private void writeKey(String key) throws IOException {
+		for (int i = 0; i < key.length(); i++) {
+			char c = key.charAt(i);
+			if (!(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')) {
+				writeString(key);
+				return;
+			}
+		}
+		write(key);
+	}
+	
 	private void writeString(String str) throws IOException {
 		if (str.indexOf('\'') == -1)
 			str = '\'' + str + '\'';
 		else
 			str = escape('\"', str, '\"');
-			
-		writer.write(str);
+		write(str);
 	}
 	
 	private void writeArray(Collection c) throws IOException {
-		writer.write('[');
+		write('[');
 		for (Object element : c) {
 			writeValue(element);
-			writer.write(",");
+			write(",");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(Object[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (Object element : array) {
 			writeValue(element);
-			writer.write(",");
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(byte[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (byte element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(short[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (short element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(char[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (char element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(int[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (int element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(long[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (long element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(float[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (float element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(", ");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeArray(double[] array) throws IOException {
-		writer.write('[');
+		write('[');
 		for (double element : array) {
-			writer.write(String.valueOf(element));
-			writer.write(",");
+			write(String.valueOf(element));
+			write(",");
 		}
-		writer.write(']');
+		write(']');
 	}
 	
 	private void writeValue(Object value) throws IOException {
-		if (value instanceof TemporalAccessor) {
-			writer.write(DateTimeFormatter.ISO_LOCAL_DATE.format((TemporalAccessor) value));
-		} else if (value instanceof String) {
-			String str = (String) value;
-			
-			if (str.indexOf('\'') == -1)
-				str = '\'' + str + '\'';
-			else
-				str = escape('\"', str, '\"');
-				
-			writer.write(str);
-		}
-		// --- Collections and Arrays ---
-		else if (value instanceof Collection) {
-			writer.write('[');
-			for (Object element : (Collection) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
-		} else if (value instanceof Object[]) {
-			writer.write('[');
-			for (Object element : (Object[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
-		} else if (value instanceof byte[]) {
-			writer.write('[');
-			for (byte element : (byte[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
-		} else if (value instanceof short[]) {
-			writer.write('[');
-			for (short element : (short[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
-		} else if (value instanceof char[]) {
-			writer.write('[');
-			for (char element : (char[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
+		if (value instanceof String) {
+			writeString((String) value);
+		} else if (value instanceof Number) {
+			write(value.toString());
+		} else if (value instanceof TemporalAccessor) {
+			write(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
 		} else if (value instanceof int[]) {
-			writer.write('[');
-			for (int element : (int[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
+			writeArray((int[]) value);
+		} else if (value instanceof byte[]) {
+			writeArray((byte[]) value);
+		} else if (value instanceof short[]) {
+			writeArray((short[]) value);
+		} else if (value instanceof char[]) {
+			writeArray((char[]) value);
 		} else if (value instanceof long[]) {
-			writer.write('[');
-			for (long element : (long[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
+			writeArray((long[]) value);
 		} else if (value instanceof float[]) {
-			writer.write('[');
-			for (float element : (float[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
+			writeArray((float[]) value);
 		} else if (value instanceof double[]) {
-			writer.write('[');
-			for (double element : (double[]) value) {
-				writeValue(element);
-				writer.write(",");
-			}
-			writer.write(']');
-		} // --- End of collections and arrays ---
-		else if (value instanceof Map) {
-			Map<String, Object> map = (Map) value;
-			for (Map.Entry<String, Object> entry : map.entrySet()) {
-				String entryName = entry.getKey();
-				Object entryValue = entry.getValue();
-				if (entryValue instanceof Map) {
-				
-				}
-			}
-			
+			writeArray((double[]) value);
+		} else if (value instanceof Map) {// should not happen because an array of tables is detected by
+											// writeTableContent()
+			throw new IOException("Unexpected value " + value);
+		} else {
+			// TODO Should we throw an Exception or write value.toString()??
+			writeString(value.toString());
 		}
 	}
 	
