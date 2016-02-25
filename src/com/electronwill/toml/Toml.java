@@ -179,6 +179,9 @@ public final class Toml {
 					wasCR = true;
 					newlines.add(sb.length());
 					sb.append('\n');
+				} else if (c == '\n') {
+					newlines.add(sb.length());
+					sb.append('\n');
 				} else {
 					sb.append(c);
 				}
