@@ -5,7 +5,7 @@ package com.electronwill.toml;
  *
  * @author TheElectronWill
  */
-public class TOMLException extends Exception {
+public class TOMLException extends RuntimeException {
 	
 	private static final long serialVersionUID = 1L;
 	
