@@ -24,7 +24,7 @@ public final class TomlReader {
 	private int line = 1;// current line
 	
 	private char stoppedAt;// the char we stopped at in the last indexOf(char[]) method
-	private int lineRead = 1;// the last line we read without incrementing the position
+	private int lineRead = 0;// the number of lines read without incrementing the position
 	
 	public TomlReader(String data) {
 		this.data = data;
@@ -93,7 +93,7 @@ public final class TomlReader {
 			if (end)
 				throw new TOMLException("Invalid end of data: each array must be closed");
 			if (data.charAt(pos) == '#') {
-				pos = data.indexOf('\n', pos) + 1;
+				goToNextLine();
 				continue;
 			}
 			Object value = readValue(true, ']', ',', '#');
@@ -106,7 +106,7 @@ public final class TomlReader {
 			if (stoppedAt == ']')
 				return coll;
 			if (stoppedAt == '#')
-				pos = data.indexOf('\n', pos) + 1;
+				goToNextLine();
 		}
 	}
 	
@@ -117,13 +117,13 @@ public final class TomlReader {
 			if (end || data.charAt(pos) == '[')
 				return map;
 			if (data.charAt(pos) == '#') {
-				pos = data.indexOf('\n', pos) + 1;
+				goToNextLine();
 				continue;
 			}
 			String key = readKey();
 			Object value = readValue(true, '\n', '#');
 			if (stoppedAt == '#')
-				pos = data.indexOf('\n', pos) + 1;
+				goToNextLine();
 			map.put(key, value);
 		}
 		
@@ -142,7 +142,7 @@ public final class TomlReader {
 			if (stoppedAt == '}')
 				return map;
 			if (stoppedAt == '#')
-				pos = data.indexOf('\n', pos) + 1;
+				goToNextLine();
 		}
 	}
 	
@@ -169,6 +169,7 @@ public final class TomlReader {
 	
 	// goes after one of the characters of the "ends" array
 	private Object readValue(boolean acceptComments, char... ends) throws TOMLException {
+		skipSpacesAndLines();
 		final String valueStr;
 		final char c = data.charAt(pos);
 		if (c == '[')
@@ -187,7 +188,7 @@ public final class TomlReader {
 			}
 			return valueStr;
 		} else {
-			valueStr = until(acceptComments, '=').trim();
+			valueStr = until(acceptComments, ends).trim();
 			if (valueStr.isEmpty())
 				return null;
 			if (valueStr.indexOf(' ') != -1)
@@ -240,7 +241,8 @@ public final class TomlReader {
 			throw new TOMLException("Invalid literal String at line " + line + ": it never ends");
 		String str = data.substring(pos, index);
 		pos = index + 1;
-		line = lineRead;
+		line += lineRead;
+		lineRead = 0;
 		return str;
 	}
 	
@@ -298,10 +300,17 @@ public final class TomlReader {
 	private boolean skipSpacesAndLines() {
 		for (; pos < data.length(); pos++) {
 			char c = data.charAt(pos);
-			if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
+			if (c == '\n')
+				line++;
+			if (c != ' ' && c != '\t' && c != '\n')
 				return false;
 		}
 		return true;
+	}
+	
+	private void goToNextLine() {
+		pos = data.indexOf('\n', pos) + 1;
+		line++;
 	}
 	
 	private String until(boolean acceptComments, char... cs) throws TOMLException {
@@ -313,7 +322,8 @@ public final class TomlReader {
 		if (!acceptComments && str.contains("#"))
 			throw new TOMLException("Invalid comment at line " + line);
 			
-		line = lineRead;
+		line += lineRead;
+		lineRead = 0;
 		pos = index + 1;// after the character we stopped at
 		return str;
 	}
