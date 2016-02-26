@@ -78,7 +78,12 @@ public final class TomlReader {
 				valueMap = (Map) map.get(part);
 			}
 			if (twoBrackets) {// element of a table array
-				Collection<Map> tableArray = (Collection) valueMap.get(keyParts.get(keyParts.size() - 1));
+				String name = keyParts.get(keyParts.size() - 1);
+				Collection<Map> tableArray = (Collection) valueMap.get(name);
+				if (tableArray == null) {
+					tableArray = new ArrayList<>();
+					valueMap.put(name, tableArray);
+				}
 				tableArray.add(value);
 			} else {// just a table
 				valueMap.put(keyParts.get(keyParts.size() - 1), value);
@@ -101,15 +106,17 @@ public final class TomlReader {
 			Object value = readValue(true, ']', ',', '#');
 			if (value == null) {// empty value
 				if (stoppedAt == ']')
-					return coll;
+					break;
 				throw new TOMLException("Invalid empty value in the array at line " + line);
 			}
 			coll.add(value);
-			if (stoppedAt == ']')
-				return coll;
+			if (stoppedAt == ']') {
+				break;
+			}
 			if (stoppedAt == '#')
 				goToNextLine();
 		}
+		return coll;
 	}
 	
 	private Map<String, Object> readTableContent() throws TOMLException {
@@ -173,14 +180,13 @@ public final class TomlReader {
 	private Object readValue(boolean acceptComments, char... ends) throws TOMLException {
 		skipSpacesAndLines();
 		final String valueStr;
-		final char c = data.charAt(pos);
+		final char c = data.charAt(pos++);
 		if (c == '[')
 			return readArray();
 		if (c == '{')
 			return readInlineTable();
 		if (c == '"' || c == '\'') {
 			// TODO support multiline strings
-			pos++;
 			valueStr = (c == '"') ? readBasicString() : readLiteralString();
 			String space = until(acceptComments, ends);// goes after the end
 			for (int i = 0; i < space.length(); i++) {// checks if there is an invalid character after the value
@@ -190,6 +196,7 @@ public final class TomlReader {
 			}
 			return valueStr;
 		} else {
+			pos--;
 			valueStr = until(acceptComments, ends).trim();
 			if (valueStr.isEmpty())
 				return null;
