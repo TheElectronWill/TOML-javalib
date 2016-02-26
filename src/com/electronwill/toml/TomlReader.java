@@ -28,9 +28,20 @@ public final class TomlReader {
 		this.data = data;
 	}
 	
+	public Map<String, Object> read() throws TOMLException {
+		Map<String, Object> map = readTableContent();
+		while (pos < data.length()) {
+		
+		}
+		return map;
+	}
+	
 	private Collection readArray() throws TOMLException {
 		Collection coll = new LinkedList();
 		while (true) {
+			boolean end = skipSpacesAndLines();
+			if (end)
+				throw new TOMLException("Invalid end of data: each array must be closed");
 			Object value = readValue(true, ']', ',', '#');
 			if (value == null) {// empty value
 				if (stoppedAt == ']')
@@ -48,17 +59,14 @@ public final class TomlReader {
 	private Map<String, Object> readTableContent() throws TOMLException {
 		Map<String, Object> map = new HashMap<>();
 		while (true) {
+			boolean end = skipSpacesAndLines();
+			if (end || data.charAt(pos) == '[')
+				return map;
 			String key = readKey();
-			String valueStr;
-			if (data.charAt(pos) == '\"') {
-				valueStr = readBasicString();
-			} else {
-				valueStr = until(true, '\n', '#');
-			}
-			// TODO support multiline strings
+			Object value = readValue(true, '\n', '#');
 			if (stoppedAt == '#')
 				pos = data.indexOf('\n', pos) + 1;
-			Object value = parseValue(valueStr);
+			map.put(key, value);
 		}
 		
 	}
@@ -105,6 +113,10 @@ public final class TomlReader {
 	private Object readValue(boolean acceptComments, char... ends) throws TOMLException {
 		final String valueStr;
 		final char c = data.charAt(pos);
+		if (c == '[')
+			return readArray();
+		if (c == '{')
+			return readInlineTable();
 		if (c == '"' || c == '\'') {
 			// TODO support multiline strings
 			pos++;
@@ -220,6 +232,18 @@ public final class TomlReader {
 			}
 		}
 		return -1;
+	}
+	
+	/**
+	 * @return true if it reached the end of the data.
+	 */
+	private boolean skipSpacesAndLines() {
+		for (; pos < data.length(); pos++) {
+			char c = data.charAt(pos);
+			if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
+				return false;
+		}
+		return true;
 	}
 	
 	private String until(boolean acceptComments, char... cs) throws TOMLException {
