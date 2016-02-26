@@ -1,8 +1,13 @@
 package com.electronwill.toml;
 
-import java.io.EOFException;
-import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 
 /**
  * Class for reading TOML v0.4.0.
@@ -23,25 +28,161 @@ public final class TomlReader {
 		this.data = data;
 	}
 	
-	private String readLiteralString() throws IOException {
+	private Collection readArray() throws TOMLException {
+		Collection coll = new LinkedList();
+		while (true) {
+			Object value = readValue(true, ']', ',', '#');
+			if (value == null) {// empty value
+				if (stoppedAt == ']')
+					return coll;
+				throw new TOMLException("Invalid empty value in the array at line " + line);
+			}
+			coll.add(value);
+			if (stoppedAt == ']')
+				return coll;
+			if (stoppedAt == '#')
+				pos = data.indexOf('\n', pos) + 1;
+		}
+	}
+	
+	private Map<String, Object> readTableContent() throws TOMLException {
+		Map<String, Object> map = new HashMap<>();
+		while (true) {
+			String key = readKey();
+			String valueStr;
+			if (data.charAt(pos) == '\"') {
+				valueStr = readBasicString();
+			} else {
+				valueStr = until(true, '\n', '#');
+			}
+			// TODO support multiline strings
+			if (stoppedAt == '#')
+				pos = data.indexOf('\n', pos) + 1;
+			Object value = parseValue(valueStr);
+		}
+		
+	}
+	
+	private Map<String, Object> readInlineTable() throws TOMLException {
+		Map<String, Object> map = new HashMap<>();
+		while (true) {
+			String key = readKey();
+			String valueStr = until(false, '}', ',', '#', '\n', '\r');
+			// TODO support multiline strings
+			if (stoppedAt == '\n' || stoppedAt == '\r')
+				throw new TOMLException("Invalid table array at line " + line + ": newlines not allowed");
+			Object value = parseValue(valueStr.trim());
+			map.put(key, value);
+			if (stoppedAt == '}')
+				return map;
+			if (stoppedAt == '#')
+				pos = data.indexOf('\n', pos) + 1;
+		}
+	}
+	
+	// goes after the = character
+	private String readKey() throws TOMLException {
+		final String key;
+		final char c = data.charAt(pos);
+		if (c == '"' || c == '\'') {
+			pos++;
+			key = (c == '"') ? readBasicString() : readLiteralString();
+			String space = until(false, '=');// goes after the =
+			for (int i = 0; i < space.length(); i++) {// checks if there is an invalid character between the key and '='
+				char shouldBeSpace = space.charAt(i);
+				if (shouldBeSpace != ' ' && shouldBeSpace != '\t')
+					throw new TOMLException("Invalid key at line " + line);
+			}
+		} else {
+			key = until(false, '=').trim();
+			if (key.indexOf(' ') != -1)
+				throw new TOMLException("Invalid bare key at line " + line + " spaces/tabs not allowed");
+		}
+		return key;
+	}
+	
+	// goes after one of the characters of the "ends" array
+	private Object readValue(boolean acceptComments, char... ends) throws TOMLException {
+		final String valueStr;
+		final char c = data.charAt(pos);
+		if (c == '"' || c == '\'') {
+			// TODO support multiline strings
+			pos++;
+			valueStr = (c == '"') ? readBasicString() : readLiteralString();
+			String space = until(acceptComments, ends);// goes after the end
+			for (int i = 0; i < space.length(); i++) {// checks if there is an invalid character after the value
+				char shouldBeSpace = space.charAt(i);
+				if (shouldBeSpace != ' ' && shouldBeSpace != '\t')
+					throw new TOMLException("Invalid value at line " + line);
+			}
+			return valueStr;
+		} else {
+			valueStr = until(acceptComments, '=').trim();
+			if (valueStr.isEmpty())
+				return null;
+			if (valueStr.indexOf(' ') != -1)
+				throw new TOMLException("Invalid value at line " + line + " spaces/tabs not allowed");
+			return parseValue(valueStr);
+		}
+	}
+	
+	/**
+	 * Parses a boolean, an integer, a decimal number or a date.
+	 */
+	private Object parseValue(String valueStr) throws TOMLException {
+		if (valueStr.equals("true"))
+			return true;
+		if (valueStr.equals("false"))
+			return false;
+		boolean maybeInteger = true, maybeDouble = true, maybeDate = true;
+		for (int i = 0; i < valueStr.length(); i++) {
+			char c = valueStr.charAt(i);
+			if (c == 'Z' || c == 'T' || c == ':')
+				maybeInteger = maybeDouble = false;
+			else if (c == 'e')
+				maybeInteger = maybeDate = false;
+			else if (c == '.')
+				maybeInteger = false;
+			else if (c == '_')
+				maybeDate = false;
+			else if (c == '-' && i != 0 && valueStr.charAt(i - 1) != 'e')
+				maybeInteger = maybeDouble = false;
+		}
+		if (maybeInteger || maybeDouble) {
+			valueStr = valueStr.replace("_", "");
+			if (maybeInteger) {
+				if (valueStr.length() < 10)
+					return Integer.parseInt(valueStr);
+				return Long.parseLong(valueStr);
+			} else {
+				return Double.parseDouble(valueStr);
+			}
+		} else if (maybeDate) {
+			return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
+		} else {
+			throw new TOMLException("Invalid value: " + valueStr + " at line " + line);
+		}
+	}
+	
+	private String readLiteralString() throws TOMLException {
 		int index = indexOf('\'');
 		if (index == -1)
-			throw new IOException("Invalid literal String at line " + line + ": it never ends");
+			throw new TOMLException("Invalid literal String at line " + line + ": it never ends");
 		String str = data.substring(pos, index);
 		pos = index + 1;
 		line = lineRead;
 		return str;
 	}
 	
-	private String readBasicString() throws IOException {
+	private String readBasicString() throws TOMLException {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false;
 		while (true) {
 			if (pos >= data.length())
-				throw new IOException("Invalid basic String at line " + line + ": it nerver ends");
+				throw new TOMLException("Invalid basic String at line " + line + ": it nerver ends");
 			char ch = data.charAt(pos++);
 			if (ch == '\n')
-				throw new IOException("Invalid basic String at line " + line + ": newlines not allowed");
+				throw new TOMLException("Invalid basic String at line " + line + ": newlines not allowed");
 			if (escape) {
 				sb.append(unescape(ch));
 				escape = false;
@@ -81,21 +222,21 @@ public final class TomlReader {
 		return -1;
 	}
 	
-	private String until(boolean acceptComments, char... cs) throws IOException {
+	private String until(boolean acceptComments, char... cs) throws TOMLException {
 		int index = indexOf(cs);
 		if (index == -1)
-			throw new IOException("Invalid data at line " + line + ": expected one of the following characters: " + Arrays.toString(cs));
+			throw new TOMLException("Invalid data at line " + line + ": expected one of the following characters: " + Arrays.toString(cs));
 			
 		String str = data.substring(pos, index);
 		if (!acceptComments && str.contains("#"))
-			throw new IOException("Invalid comment at line " + line);
+			throw new TOMLException("Invalid comment at line " + line);
 			
 		line = lineRead;
 		pos = index + 1;// after the character we stopped at
 		return str;
 	}
 	
-	private char unescape(char c) throws IOException {
+	private char unescape(char c) throws TOMLException {
 		switch (c) {
 			case 'b':
 				return '\b';
@@ -113,20 +254,20 @@ public final class TomlReader {
 				return '\\';
 			case 'u': {// unicode U+XXXX
 				if (data.length() - pos < 4)
-					throw new EOFException("Invalid end of data");
+					throw new TOMLException("Invalid unicode point: not enough data");
 				String unicode = data.substring(pos, pos + 4);
 				int hexVal = Integer.parseInt(unicode, 16);
 				return (char) hexVal;
 			}
 			case 'U': {// unicode U+XXXXXXXX
 				if (data.length() - pos < 8)
-					throw new EOFException("Invalid end of data");
+					throw new TOMLException("Invalid end of data");
 				String unicode = data.substring(pos, pos + 8);
 				int hexVal = Integer.parseInt(unicode, 16);
 				return (char) hexVal;
 			}
 			default:
-				throw new IOException("Invalid escape sequence: \\" + c);
+				throw new TOMLException("Invalid escape sequence: \\" + c);
 		}
 	}
 	
