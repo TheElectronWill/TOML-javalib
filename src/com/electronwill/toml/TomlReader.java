@@ -34,7 +34,8 @@ public final class TomlReader {
 		Map<String, Object> map = readTableContent();
 		pos++;
 		while (pos < data.length()) {
-			boolean twoBrackets = (data.charAt(pos) == '[');
+			char ch = data.charAt(pos);
+			boolean twoBrackets = (ch == '[');
 			
 			// --- Reads the key --
 			List<String> keyParts = new ArrayList<>(4);
@@ -68,6 +69,7 @@ public final class TomlReader {
 			
 			// -- Reads the value (table content) --
 			Map<String, Object> value = readTableContent();
+			pos++;
 			
 			// -- Saves the value --
 			Map<String, Object> valueMap = map;// the map that contains the value
