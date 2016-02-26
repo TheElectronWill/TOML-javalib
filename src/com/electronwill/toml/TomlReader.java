@@ -92,6 +92,10 @@ public final class TomlReader {
 			boolean end = skipSpacesAndLines();
 			if (end)
 				throw new TOMLException("Invalid end of data: each array must be closed");
+			if (data.charAt(pos) == '#') {
+				pos = data.indexOf('\n', pos) + 1;
+				continue;
+			}
 			Object value = readValue(true, ']', ',', '#');
 			if (value == null) {// empty value
 				if (stoppedAt == ']')
@@ -112,6 +116,10 @@ public final class TomlReader {
 			boolean end = skipSpacesAndLines();
 			if (end || data.charAt(pos) == '[')
 				return map;
+			if (data.charAt(pos) == '#') {
+				pos = data.indexOf('\n', pos) + 1;
+				continue;
+			}
 			String key = readKey();
 			Object value = readValue(true, '\n', '#');
 			if (stoppedAt == '#')

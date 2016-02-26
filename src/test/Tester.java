@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import com.electronwill.toml.TOMLException;
 import com.electronwill.toml.Toml;
 
 /**
@@ -17,7 +18,7 @@ import com.electronwill.toml.Toml;
  */
 public class Tester {
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, TOMLException {
 		URL urlExample = Tester.class.getResource("ressources/example.toml");
 		URL urlHardExample = Tester.class.getResource("ressources/hard-example.toml");
 		URL urlHardExampleUnicode = Tester.class.getResource("ressources/hard-example-unicode.toml");
@@ -38,7 +39,7 @@ public class Tester {
 		Toml.write(map, file);
 	}
 	
-	private static void test(URL[] urls) throws IOException {
+	private static void test(URL[] urls) throws IOException, TOMLException {
 		for (URL url : urls) {
 			System.out.println("Reading " + url);
 			Map<String, Object> read = Toml.read(url.openStream());
