@@ -17,7 +17,7 @@ import java.util.Map;
  * @author TheElectronWill
  * 		
  */
-public final class TomlReader2 {
+public final class TomlReader_old {
 	
 	private final String data;
 	private final List<Integer> newlines;
@@ -30,7 +30,7 @@ public final class TomlReader2 {
 	 * @param data the data to read
 	 * @param newlines a list containing the position of every newlines (\n characters).
 	 */
-	public TomlReader2(String data, List<Integer> newlines) {
+	public TomlReader_old(String data, List<Integer> newlines) {
 		this.data = data;
 		this.newlines = newlines;
 	}
