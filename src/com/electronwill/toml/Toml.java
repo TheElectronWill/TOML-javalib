@@ -13,8 +13,6 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -120,14 +118,16 @@ public final class Toml {
 	 * 
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
+	 * @throws TOMLException
 	 */
-	public static Map<String, Object> readLineFeedOnlyString(String toml) throws IOException {
+	public static Map<String, Object> readLineFeedOnlyString(String toml) throws TOMLException {
+		/*
 		List<Integer> newlines = new ArrayList<>();
 		for (int i = 0; i < toml.length(); i++) {
 			if (toml.charAt(i) == '\n')
 				newlines.add(i);
-		}
-		TomlReader tr = new TomlReader(toml, newlines);
+		}*/
+		TomlReader tr = new TomlReader(toml);
 		return tr.read();
 	}
 	
@@ -138,8 +138,9 @@ public final class Toml {
 	 * @param file the File to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
+	 * @throws TOMLException
 	 */
-	public static Map<String, Object> read(File file) throws IOException {
+	public static Map<String, Object> read(File file) throws IOException, TOMLException {
 		return read(new FileInputStream(file));
 	}
 	
@@ -150,8 +151,9 @@ public final class Toml {
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
+	 * @throws TOMLException
 	 */
-	public static Map<String, Object> read(InputStream in) throws IOException {
+	public static Map<String, Object> read(InputStream in) throws IOException, TOMLException {
 		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available());
 	}
 	
@@ -164,9 +166,9 @@ public final class Toml {
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
 	 */
-	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException {
+	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException, TOMLException {
 		StringBuilder sb = new StringBuilder(stringBuilderSize);
-		List<Integer> newlines = new ArrayList<>();
+		// List<Integer> newlines = new ArrayList<>();
 		
 		char[] buf = new char[8192];
 		int read;
@@ -179,10 +181,10 @@ public final class Toml {
 					wasCR = false;
 				} else if (c == '\r') {
 					wasCR = true;
-					newlines.add(sb.length());
+					// newlines.add(sb.length());
 					sb.append('\n');
 				} else if (c == '\n') {
-					newlines.add(sb.length());
+					// newlines.add(sb.length());
 					sb.append('\n');
 				} else {
 					sb.append(c);
@@ -190,7 +192,7 @@ public final class Toml {
 			}
 		}
 		
-		TomlReader tr = new TomlReader(sb.toString(), newlines);
+		TomlReader tr = new TomlReader(sb.toString());
 		return tr.read();
 	}
 	

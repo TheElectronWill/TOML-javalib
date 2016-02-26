@@ -3,10 +3,12 @@ package com.electronwill.toml;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,8 +32,56 @@ public final class TomlReader {
 	
 	public Map<String, Object> read() throws TOMLException {
 		Map<String, Object> map = readTableContent();
+		pos++;
 		while (pos < data.length()) {
-		
+			boolean twoBrackets = (data.charAt(pos) == '[');
+			
+			// --- Reads the key --
+			List<String> keyParts = new ArrayList<>(4);
+			StringBuilder keyBuilder = new StringBuilder();
+			while (true) {
+				if (pos >= data.length())
+					throw new TOMLException("Invalid table or table array element declaratio at line " + line + ": not enough data");
+				char next = data.charAt(pos++);
+				if (next == '\"') {
+					keyParts.add(keyBuilder.toString().trim());
+					keyBuilder.setLength(0);
+					keyParts.add(readBasicString());
+				} else if (next == ']') {
+					keyParts.add(keyBuilder.toString().trim());
+					break;
+				} else if (next == '.') {
+					keyParts.add(keyBuilder.toString().trim());
+					keyBuilder.setLength(0);
+				} else if (next == '#') {
+					throw new TOMLException("Invalid comment at line " + line);
+				} else {
+					keyBuilder.append(next);
+				}
+			}
+			
+			// -- Check --
+			if (twoBrackets) {
+				if (data.charAt(pos++) != ']')// there are only one ] that ends the declaration -> error
+					throw new TOMLException("Missing character ] at line " + line);
+			}
+			
+			// -- Reads the value (table content) --
+			Map<String, Object> value = readTableContent();
+			
+			// -- Saves the value --
+			Map<String, Object> valueMap = map;// the map that contains the value
+			for (int i = 0; i < keyParts.size() - 1; i++) {
+				String part = keyParts.get(i);
+				valueMap = (Map) map.get(part);
+			}
+			if (twoBrackets) {// element of a table array
+				Collection<Map> tableArray = (Collection) valueMap.get(keyParts.get(keyParts.size() - 1));
+				tableArray.add(value);
+			} else {// just a table
+				valueMap.put(keyParts.get(keyParts.size() - 1), value);
+			}
+			
 		}
 		return map;
 	}
