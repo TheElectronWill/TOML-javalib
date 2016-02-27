@@ -23,7 +23,7 @@ Toml.write(data, file);
 You may also use the TomlReader and TomlWriter classes directly.  
 
 ## What does currently work?
-The TomlReader works fine, and is very fast (It successfully parsed the test files listed on the TOML repository (example.toml, hard\_example.toml and hard\_example\_unicode.toml). It does not support the basic multiline Strings though.  
+The TomlReader is complete. It successfully parses the test files of the "test/ressources" folder.
 
 The TomlWriter works and is very fast, but it has a little problem: it may write the single key/value pair (those who are in the root table) at the end of the file, which is invalid. Furthermore, it does writes complex keys (such as "parent.child1.child2") correctly.  
 
