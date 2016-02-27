@@ -52,7 +52,6 @@ public final class TomlReader {
 	}
 	
 	private Object nextValue(char firstChar) {
-		char c2, c3;
 		switch (firstChar) {
 			case '+':
 			case '-':
@@ -68,9 +67,9 @@ public final class TomlReader {
 			case '9':
 				return nextNumberOrDate(firstChar);
 			case '"':
-				if (pos + 2 < data.length()) {
-					c2 = data.charAt(pos + 1);
-					c3 = data.charAt(pos + 2);
+				if (pos + 1 < data.length()) {
+					char c2 = data.charAt(pos);
+					char c3 = data.charAt(pos + 1);
 					if (c2 == '"' && c3 == '"') {
 						pos += 2;
 						return nextBasicMultilineString();
@@ -78,9 +77,9 @@ public final class TomlReader {
 				}
 				return nextBasicString();
 			case '\'':
-				if (pos + 2 < data.length()) {
-					c2 = data.charAt(pos + 1);
-					c3 = data.charAt(pos + 2);
+				if (pos + 1 < data.length()) {
+					char c2 = data.charAt(pos);
+					char c3 = data.charAt(pos + 1);
 					if (c2 == '"' && c3 == '"') {
 						pos += 2;
 						return nextLiteralMultilineString();
