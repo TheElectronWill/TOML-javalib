@@ -40,7 +40,6 @@ hosts = [
 multiline_literal = '''
 Line 01
 Line 02
-
 Line 03'''
 multiline_basic = """
 Line 01\
