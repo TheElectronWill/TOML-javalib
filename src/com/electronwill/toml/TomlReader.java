@@ -203,12 +203,12 @@ public final class TomlReader {
 	}
 	
 	private List nextArray() {
-		List<Object> list = new ArrayList<>();
+		ArrayList<Object> list = new ArrayList<>();
 		while (true) {
 			char c = nextUseful(true);
 			if (c == ']') {
 				pos++;
-				return list;
+				break;
 			}
 			Object value = nextValue(c);
 			if (!list.isEmpty() && !(list.get(0).getClass().isAssignableFrom(value.getClass())))
@@ -219,12 +219,14 @@ public final class TomlReader {
 			char afterEntry = nextUseful(true);
 			if (afterEntry == ']') {
 				pos++;
-				return list;
+				break;
 			}
 			if (afterEntry != ',') {
 				throw new TOMLException("Invalid array at pos " + pos + ": expected a comma after each value");
 			}
 		}
+		list.trimToSize();
+		return list;
 	}
 	
 	private Map<String, Object> nextInlineTable() {
