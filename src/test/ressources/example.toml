@@ -37,12 +37,15 @@ hosts = [
 ]
 
 # Added by TheElectronWill:
-multiline = """
+multiline_literal = '''
 Line 01
-Line 02\
+Line 02
 
-
-Line 03"""
+Line 03'''
+multiline_basic = """
+Line 01\
+Still line 01
+Line 02"""
 
 # Products
 
