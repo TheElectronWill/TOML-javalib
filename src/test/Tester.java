@@ -22,7 +22,7 @@ public class Tester {
 		URL urlExample = Tester.class.getResource("ressources/example.toml");
 		URL urlHardExample = Tester.class.getResource("ressources/hard-example.toml");
 		URL urlHardExampleUnicode = Tester.class.getResource("ressources/hard-example-unicode.toml");
-		URL[] urls = { urlExample };// , urlHardExample, urlHardExampleUnicode };
+		URL[] urls = { urlExample, urlHardExample, urlHardExampleUnicode };
 		test(urls);
 		Map<String, Object> map = new HashMap<>();
 		map.put("yolo", "egriheoigh _uç(-");
@@ -48,7 +48,7 @@ public class Tester {
 			printMap(read);
 			System.out.println("=================================");
 			String[] urlParts = url.getPath().split("/");
-			writeTest(read, urlParts[urlParts.length - 1]);
+			// writeTest(read, urlParts[urlParts.length - 1]);
 		}
 	}
 	
