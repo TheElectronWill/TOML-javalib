@@ -442,20 +442,27 @@ public final class TomlReader {
 	
 	private String nextBasicMultilineString() {
 		StringBuilder sb = new StringBuilder();
+		boolean first = true;
 		boolean escape = false;
 		while (hasNext()) {
 			char c = next();
+			if (first && (c == '\r' || c == '\n')) {
+				first = false;
+				continue;
+			}
 			if (escape) {
 				if (c == '\r' || c == '\n') {
 					if (c == '\r' && hasNext() && data.charAt(pos) == '\n')
 						pos++;
 					nextUseful(false);
+					pos--;// so that it is read by the next call to next()
 				} else {
 					sb.append(unescape(c));
 				}
 				escape = false;
 			} else if (c == '\\') {
 				escape = true;
+				continue;
 			} else if (c == '"') {
 				if (pos + 1 >= data.length())
 					break;
@@ -463,6 +470,7 @@ public final class TomlReader {
 					pos += 2;
 					return sb.toString();
 				}
+				continue;
 			}
 			sb.append(c);
 			
