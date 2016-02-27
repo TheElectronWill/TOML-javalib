@@ -403,14 +403,16 @@ public final class TomlReader {
 	}
 	
 	private String nextLiteralMultilineString() {
-		int index = data.indexOf("'''");
+		int index = data.indexOf("'''", pos);
 		if (index == -1)
 			throw new TOMLException("Invalid multiline literal String at pos " + pos + ": it never ends");
 		String str;
-		if (data.charAt(pos) == '\r' && data.charAt(pos) == '\n') {
+		if (data.charAt(pos) == '\r' && data.charAt(pos + 1) == '\n') {// "\r\n"
 			str = data.substring(pos + 2, index);
-		} else if (data.charAt(pos) == '\n' || data.charAt(pos) == '\r') {
+			line++;
+		} else if (data.charAt(pos) == '\n') {
 			str = data.substring(pos + 1, index);
+			line++;
 		} else {
 			str = data.substring(pos, index);
 		}
@@ -447,13 +449,19 @@ public final class TomlReader {
 		while (hasNext()) {
 			char c = next();
 			if (first && (c == '\r' || c == '\n')) {
+				if (c == '\r' && hasNext() && data.charAt(pos) == '\n')// "\r\n"
+					pos++;// so that it is NOT read by the next call to next()
+				else
+					line++;
 				first = false;
 				continue;
 			}
 			if (escape) {
 				if (c == '\r' || c == '\n') {
-					if (c == '\r' && hasNext() && data.charAt(pos) == '\n')
+					if (c == '\r' && hasNext() && data.charAt(pos) == '\n')// "\r\n"
 						pos++;
+					else
+						line++;
 					nextUseful(false);
 					pos--;// so that it is read by the next call to next()
 				} else {
