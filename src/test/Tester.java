@@ -64,7 +64,7 @@ public class Tester {
 	private static void printCollection(Collection c) {
 		System.out.print("[");
 		for (Object o : c) {
-			System.out.print(c);
+			System.out.print(o);
 			System.out.print(", ");
 		}
 		System.out.println("]");
