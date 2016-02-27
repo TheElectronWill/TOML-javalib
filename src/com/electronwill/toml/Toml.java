@@ -174,7 +174,8 @@ public final class Toml {
 		int read;
 		boolean wasCR = false;
 		while ((read = reader.read(buf)) != -1) {
-			for (char c : buf) {
+			for (int i = 0; i < read; i++) {
+				char c = buf[i];
 				if (wasCR) {
 					if (c != '\n')
 						sb.append(c);
@@ -191,7 +192,6 @@ public final class Toml {
 				}
 			}
 		}
-		
 		TomlReader tr = new TomlReader(sb.toString());
 		return tr.read();
 	}
