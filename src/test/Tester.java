@@ -22,7 +22,7 @@ public class Tester {
 		URL urlExample = Tester.class.getResource("ressources/example.toml");
 		URL urlHardExample = Tester.class.getResource("ressources/hard-example.toml");
 		URL urlHardExampleUnicode = Tester.class.getResource("ressources/hard-example-unicode.toml");
-		URL[] urls = { urlExample, urlHardExample, urlHardExampleUnicode };
+		URL[] urls = { urlExample };// , urlHardExample, urlHardExampleUnicode };
 		test(urls);
 		Map<String, Object> map = new HashMap<>();
 		map.put("yolo", "egriheoigh _uç(-");
@@ -30,12 +30,14 @@ public class Tester {
 		map.put("test", new HashMap());
 		map.put("testt", Arrays.asList(urls));
 		map.put("yolo.a", new int[] { 12, 52, 8, 0, -5 });
-		writeTest(map, "test01");
+		writeTest(map, "easyTest");
 	}
 	
 	private static void writeTest(Map<String, Object> map, String name) throws IOException {
-		System.out.println("Writing " + name);
-		File file = new File("output- " + name + ".toml");
+		if (!name.endsWith(".toml")) {
+			name += ".toml";
+		}
+		File file = new File("Writing " + name);
 		Toml.write(map, file);
 	}
 	
@@ -45,7 +47,8 @@ public class Tester {
 			Map<String, Object> read = Toml.read(url.openStream());
 			printMap(read);
 			System.out.println("=================================");
-			writeTest(read, url.getFile());
+			String[] urlParts = url.getPath().split("/");
+			writeTest(read, urlParts[urlParts.length - 1]);
 		}
 	}
 	
