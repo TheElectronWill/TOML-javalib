@@ -34,9 +34,9 @@ public final class TomlReader {
 	
 	private char nextUseful(boolean skipComments) {
 		char c = ' ';
-		while (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+		while (hasNext() && (c == ' ' || c == '\t' || c == '\r' || c == '\n' || (c == '#' && skipComments))) {
 			c = next();
-			if (c == '#' && skipComments)
+			if (c == '#')
 				pos = data.indexOf('\n', pos) + 1;
 		}
 		return c;
@@ -50,7 +50,7 @@ public final class TomlReader {
 	}
 	
 	private Object nextValue(char firstChar) {
-		char c2, c3, c4;
+		char c2, c3;
 		switch (firstChar) {
 			case '+':
 			case '-':
@@ -66,35 +66,36 @@ public final class TomlReader {
 			case '9':
 				return nextNumberOrDate(firstChar);
 			case '"':
-				c2 = next();
-				c3 = next();
-				if (c2 == '"' && c3 == '"')
-					return nextBasicMultilineString();
+				if (pos + 2 < data.length()) {
+					c2 = data.charAt(pos + 1);
+					c3 = data.charAt(pos + 2);
+					if (c2 == '"' && c3 == '"') {
+						pos += 2;
+						return nextBasicMultilineString();
+					}
+				}
 				return nextBasicString();
 			case '\'':
-				c2 = next();
-				c3 = next();
-				if (c2 == '\'' && c3 == '\'')
-					return nextLiteralMultilineString();
+				if (pos + 2 < data.length()) {
+					c2 = data.charAt(pos + 1);
+					c3 = data.charAt(pos + 2);
+					if (c2 == '"' && c3 == '"') {
+						pos += 2;
+						return nextLiteralMultilineString();
+					}
+				}
 				return nextLiteralString();
 			case '[':
 				return nextArray();
 			case '{':
 				return nextInlineTable();
 			case 't':// Must be "true"
-				c2 = next();
-				c3 = next();
-				c4 = next();
-				if (c2 != 'r' || c3 != 'u' || c4 != 'e') {
+				if (pos + 3 >= data.length() || next() != 'r' || next() != 'u' || next() != 'e') {
 					throw new TOMLException("Invalid value at pos " + pos);
 				}
 				return true;
 			case 'f':// Must be "false"
-				c2 = next();
-				c3 = next();
-				c4 = next();
-				char c5 = next();
-				if (c2 != 'a' || c3 != 'l' || c4 != 's' || c5 != 'e') {
+				if (pos + 4 >= data.length() || next() != 'a' || next() != 'l' || next() != 's' || next() != 'e') {
 					throw new TOMLException("Invalid value at pos " + pos);
 				}
 				return false;
@@ -148,7 +149,6 @@ public final class TomlReader {
 			
 			// -- Reads the value (table content) --
 			Map<String, Object> value = nextTableContent();
-			pos++;
 			
 			// -- Saves the value --
 			Map<String, Object> valueMap = map;// the map that contains the value
@@ -177,6 +177,7 @@ public final class TomlReader {
 		while (true) {
 			char c = nextUseful(true);
 			if (c == ']') {
+				pos++;
 				return list;
 			}
 			Object value = nextValue(c);
@@ -184,8 +185,10 @@ public final class TomlReader {
 				throw new TOMLException("Invalid array at pos " + pos + ": all the values must have the same type");
 			list.add(value);
 			
+			pos--;
 			char afterEntry = nextUseful(true);
 			if (afterEntry == ']') {
+				pos++;
 				return list;
 			}
 			if (afterEntry != ',') {
@@ -235,25 +238,53 @@ public final class TomlReader {
 		Map<String, Object> map = new HashMap<>();
 		while (true) {
 			char nameFirstChar = nextUseful(true);
-			String name;
+			if (!hasNext() || nameFirstChar == '[') {
+				return map;
+			}
+			System.out.println("nameFirstChar: " + nameFirstChar);
+			String name = null;
 			if (nameFirstChar == '"') {
-				char c2 = next(), c3 = next();
-				name = (c2 == '"' && c3 == '"') ? nextBasicMultilineString() : nextBasicString();
+				if (pos + 2 < data.length()) {
+					char c2 = data.charAt(pos + 1);
+					char c3 = data.charAt(pos + 2);
+					if (c2 == '"' && c3 == '"') {
+						pos += 2;
+						name = nextBasicMultilineString();
+					}
+				}
+				if (name == null) {
+					pos--;
+					name = nextBasicString();
+				}
 			} else if (nameFirstChar == '\'') {
-				char c2 = next(), c3 = next();
-				name = (c2 == '\'' && c3 == '\'') ? nextLiteralMultilineString() : nextLiteralString();
+				if (pos + 2 < data.length()) {
+					char c2 = data.charAt(pos + 1);
+					char c3 = data.charAt(pos + 2);
+					if (c2 == '"' && c3 == '"') {
+						pos += 2;
+						name = nextLiteralMultilineString();
+					}
+				}
+				if (name == null) {
+					pos--;
+					name = nextLiteralString();
+				}
 			} else {
+				pos--;
 				name = nextBareKey();
 				if (data.charAt(pos - 1) == '=')
 					pos--;
 			}
+			System.out.println("key name: " + name);
 			char separator = nextUseful(true);
+			System.out.println("separator: " + separator);
 			if (separator != '=') {
 				throw new TOMLException("Invalid key at pos " + pos);
 			}
 			
 			char valueFirstChar = nextUseful(true);
 			Object value = nextValue(valueFirstChar);
+			System.out.println("value: " + value);
 			map.put(name, value);
 			
 			char after = nextUseful(true);
@@ -280,7 +311,7 @@ public final class TomlReader {
 				maybeInteger = false;
 			else if (c == '-' && pos != 0 && data.charAt(pos - 1) != 'e' && data.charAt(pos - 1) != 'E')
 				maybeInteger = maybeDouble = false;
-			else if (c == ',' || c == ' ' || c == '\t' || c == ']' || c == '}')
+			else if (c == ',' || c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ']' || c == '}')
 				break;
 				
 			if (c == '_')
@@ -304,7 +335,7 @@ public final class TomlReader {
 		String keyName;
 		for (int i = pos; i < data.length(); i++) {
 			char c = data.charAt(i);
-			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
+			if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) {
 				keyName = data.substring(pos, i);
 				pos = i;
 				return keyName;
@@ -352,6 +383,7 @@ public final class TomlReader {
 			} else if (ch == '\\') {
 				escape = true;
 			} else if (ch == '\"') {
+				pos++;
 				return sb.toString();
 			} else {
 				sb.append(ch);
