@@ -406,7 +406,7 @@ public final class TomlReader {
 	private String nextLiteralMultilineString() {
 		int index = data.indexOf("'''");
 		if (index == -1)
-			throw new TOMLException("Invalid literal String (multiline) at pos " + pos + ": it never ends");
+			throw new TOMLException("Invalid multiline literal String at pos " + pos + ": it never ends");
 		String str;
 		if (data.charAt(pos) == '\r' && data.charAt(pos) == '\n') {
 			str = data.substring(pos + 2, index);
@@ -423,26 +423,52 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false;
 		while (hasNext()) {
-			char ch = next();
-			if (ch == '\n' || ch == '\r')
+			char c = next();
+			if (c == '\n' || c == '\r')
 				throw new TOMLException("Invalid basic String at pos " + pos + ": newlines not allowed");
 			if (escape) {
-				sb.append(unescape(ch));
+				sb.append(unescape(c));
 				escape = false;
-			} else if (ch == '\\') {
+			} else if (c == '\\') {
 				escape = true;
-			} else if (ch == '\"') {
+			} else if (c == '"') {
 				pos++;
 				return sb.toString();
 			} else {
-				sb.append(ch);
+				sb.append(c);
 			}
 		}
 		throw new TOMLException("Invalid basic String at pos " + pos + ": it nerver ends");
 	}
 	
 	private String nextBasicMultilineString() {
-		return "TODO";// TODO
+		StringBuilder sb = new StringBuilder();
+		boolean escape = false;
+		while (hasNext()) {
+			char c = next();
+			if (escape) {
+				if (c == '\r' || c == '\n') {
+					if (c == '\r' && hasNext() && data.charAt(pos) == '\n')
+						pos++;
+					nextUseful(false);
+				} else {
+					sb.append(unescape(c));
+				}
+				escape = false;
+			} else if (c == '\\') {
+				escape = true;
+			} else if (c == '"') {
+				if (pos + 1 >= data.length())
+					break;
+				if (data.charAt(pos) == '"' && data.charAt(pos + 1) == '"') {
+					pos += 2;
+					return sb.toString();
+				}
+			}
+			sb.append(c);
+			
+		}
+		throw new TOMLException("Invalid multiline basic String at pos " + pos + ": it never ends");
 	}
 	
 	private char unescape(char c) throws TOMLException {
