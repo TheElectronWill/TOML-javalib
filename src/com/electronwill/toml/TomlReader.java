@@ -115,30 +115,54 @@ public final class TomlReader {
 			// --- Reads the key --
 			List<String> keyParts = new ArrayList<>(4);
 			StringBuilder keyBuilder = new StringBuilder();
-			while (true) {
+			whileLoop: while (true) {
 				if (!hasNext())
 					throw new TOMLException("Invalid table declaration at pos " + pos + ": not enough data");
 				char next = nextUsefulOrLinebreak();
-				if (next == '"') {
-					keyParts.add(keyBuilder.toString().trim());
-					keyBuilder.setLength(0);
-					keyParts.add(nextBasicString());
-				} else if (next == '\'') {
-					keyParts.add(keyBuilder.toString().trim());
-					keyBuilder.setLength(0);
-					keyParts.add(nextLiteralString());
-				} else if (next == ']') {
-					keyParts.add(keyBuilder.toString().trim());
-					break;
-				} else if (next == '.') {
-					keyParts.add(keyBuilder.toString().trim());
-					keyBuilder.setLength(0);
-				} else if (next == '#') {
-					throw new TOMLException("Invalid table name at pos " + pos + ": comments are not allowed here");
-				} else if (next == '\n' || next == '\r') {
-					throw new TOMLException("Invalid table name at pos " + pos + ": line breaks are not allowed here");
-				} else {
-					keyBuilder.append(next);
+				switch (next) {
+					case '"': {
+						String current = keyBuilder.toString().trim();
+						if (current.length() > 0) {
+							keyParts.add(current);
+							keyBuilder.setLength(0);
+						}
+						keyParts.add(nextBasicString());
+						pos--;
+						break;
+					}
+					case '\'': {
+						String current = keyBuilder.toString().trim();
+						if (current.length() > 0) {
+							keyParts.add(current);
+							keyBuilder.setLength(0);
+						}
+						keyParts.add(nextLiteralString());
+						pos--;
+						break;
+					}
+					case ']': {
+						String current = keyBuilder.toString().trim();
+						if (!current.isEmpty())
+							keyParts.add(current);
+						break whileLoop;
+					}
+					case '.': {
+						String current = keyBuilder.toString().trim();
+						if (current.length() == 0) {
+							throw new TOMLException("Invalid table name at pos " + pos + ": empty value are not allowed here");
+						}
+						keyParts.add(current);
+						keyBuilder.setLength(0);
+						break;
+					}
+					case '#':
+						throw new TOMLException("Invalid table name at pos " + pos + ": comments are not allowed here");
+					case '\n':
+					case '\r':
+						throw new TOMLException("Invalid table name at pos " + pos + ": line breaks are not allowed here");
+					default:
+						keyBuilder.append(next);
+						break;
 				}
 			}
 			
@@ -202,21 +226,27 @@ public final class TomlReader {
 		Map<String, Object> map = new HashMap<>();
 		while (true) {
 			char nameFirstChar = nextUsefulOrLinebreak();
-			if (nameFirstChar == '}') {
-				return map;
-			}
 			String name;
-			if (nameFirstChar == '"') {
-				char c2 = next(), c3 = next();
-				name = (c2 == '"' && c3 == '"') ? nextBasicMultilineString() : nextBasicString();
-			} else if (nameFirstChar == '\'') {
-				char c2 = next(), c3 = next();
-				name = (c2 == '\'' && c3 == '\'') ? nextLiteralMultilineString() : nextLiteralString();
-			} else {
-				name = nextBareKey();
-				if (data.charAt(pos - 1) == '=')
-					pos--;
+			switch (nameFirstChar) {
+				case '}':
+					return map;
+				case '"': {
+					char c2 = next(), c3 = next();
+					name = (c2 == '"' && c3 == '"') ? nextBasicMultilineString() : nextBasicString();
+					break;
+				}
+				case '\'': {
+					char c2 = next(), c3 = next();
+					name = (c2 == '\'' && c3 == '\'') ? nextLiteralMultilineString() : nextLiteralString();
+					break;
+				}
+				default:
+					name = nextBareKey();
+					if (data.charAt(pos - 1) == '=')
+						pos--;
+					break;
 			}
+			
 			char separator = nextUsefulOrLinebreak();
 			if (separator != '=') {
 				throw new TOMLException("Invalid key at pos " + pos);
@@ -244,41 +274,43 @@ public final class TomlReader {
 			}
 			System.out.println("nameFirstChar: " + nameFirstChar);
 			String name = null;
-			if (nameFirstChar == '"') {
-				if (pos + 2 < data.length()) {
-					char c2 = data.charAt(pos + 1);
-					char c3 = data.charAt(pos + 2);
-					if (c2 == '"' && c3 == '"') {
-						pos += 2;
-						name = nextBasicMultilineString();
+			switch (nameFirstChar) {
+				case '"': {
+					if (pos + 1 < data.length()) {
+						char c2 = data.charAt(pos);
+						char c3 = data.charAt(pos + 1);
+						if (c2 == '"' && c3 == '"') {
+							pos += 2;
+							name = nextBasicMultilineString();
+						}
 					}
-				}
-				if (name == null) {
-					pos--;
-					name = nextBasicString();
-				}
-			} else if (nameFirstChar == '\'') {
-				if (pos + 2 < data.length()) {
-					char c2 = data.charAt(pos + 1);
-					char c3 = data.charAt(pos + 2);
-					if (c2 == '"' && c3 == '"') {
-						pos += 2;
-						name = nextLiteralMultilineString();
+					if (name == null) {
+						name = nextBasicString();
 					}
+					break;
 				}
-				if (name == null) {
-					pos--;
-					name = nextLiteralString();
+				case '\'': {
+					if (pos + 1 < data.length()) {
+						char c2 = data.charAt(pos);
+						char c3 = data.charAt(pos + 1);
+						if (c2 == '"' && c3 == '"') {
+							pos += 2;
+							name = nextLiteralMultilineString();
+						}
+					}
+					if (name == null) {
+						name = nextLiteralString();
+					}
+					break;
 				}
-			} else {
-				pos--;
-				name = nextBareKey();
-				if (data.charAt(pos - 1) == '=')
+				default:
 					pos--;
+					name = nextBareKey();
+					if (data.charAt(pos - 1) == '=')
+						pos--;
+					break;
 			}
-			System.out.println("key name: " + name);
 			char separator = nextUseful(true);
-			System.out.println("separator: " + separator);
 			if (separator != '=') {
 				throw new TOMLException("Invalid key at pos " + pos);
 			}
@@ -302,34 +334,50 @@ public final class TomlReader {
 		StringBuilder sb = new StringBuilder();
 		sb.append(first);
 		char c;
-		while (hasNext()) {
+		whileLoop: while (hasNext()) {
 			c = next();
-			if (c == 'Z' || c == 'T' || c == ':')
-				maybeInteger = maybeDouble = false;
-			else if (c == 'e' || c == 'E')
-				maybeInteger = maybeDate = false;
-			else if (c == '.')
-				maybeInteger = false;
-			else if (c == '-' && pos != 0 && data.charAt(pos - 1) != 'e' && data.charAt(pos - 1) != 'E')
-				maybeInteger = maybeDouble = false;
-			else if (c == ',' || c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ']' || c == '}')
-				break;
-				
+			switch (c) {
+				case ':':
+				case 'T':
+				case 'Z':
+					maybeInteger = maybeDouble = false;
+					break;
+				case 'e':
+				case 'E':
+					maybeInteger = maybeDate = false;
+					break;
+				case '.':
+					maybeInteger = false;
+					break;
+				case '-':
+					if (c == '-' && pos != 0 && data.charAt(pos - 1) != 'e' && data.charAt(pos - 1) != 'E')
+						maybeInteger = maybeDouble = false;
+					break;
+				case ',':
+				case ' ':
+				case '\t':
+				case '\n':
+				case '\r':
+				case ']':
+				case '}':
+					break whileLoop;
+			}
 			if (c == '_')
 				maybeDate = false;
 			else
 				sb.append(c);
 		}
 		String valueStr = sb.toString();
-		if (maybeInteger) {
+		if (maybeInteger)
 			return (valueStr.length() < 10) ? Integer.parseInt(valueStr) : Long.parseLong(valueStr);
-		} else if (maybeDouble) {
+			
+		if (maybeDouble)
 			return Double.parseDouble(valueStr);
-		} else if (maybeDate) {
+			
+		if (maybeDate)
 			return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
-		} else {
-			throw new TOMLException("Invalid value: " + valueStr + " at pos " + pos);
-		}
+			
+		throw new TOMLException("Invalid value: " + valueStr + " at pos " + pos);
 	}
 	
 	private String nextBareKey() {
