@@ -23,5 +23,7 @@ Toml.write(data, file);
 You may also use the TomlReader and TomlWriter classes directly.  
 
 ## What does currently work?
-The TomlWriter works and is very fast, but it has a little problem: it may write the single key/value pair (those who are in the root table) at the end of the file, which is invalid.  
-The TomlReader works pretty fine, and is also very fast (It successfully parsed the "example.toml" test file).
+The TomlReader works pretty fine, and is also very fast (It successfully parsed the "example.toml" test file).  
+
+The TomlWriter works and is very fast, but it has a little problem: it may write the single key/value pair (those who are in the root table) at the end of the file, which is invalid. Furthermore, it does writes complex keys (such as "parent.child1.child2") correctly.  
+
