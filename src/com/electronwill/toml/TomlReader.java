@@ -409,8 +409,8 @@ public final class TomlReader {
 				return '\f';
 			case 'r':
 				return '\r';
-			case '\"':
-				return '\"';
+			case '"':
+				return '"';
 			case '\\':
 				return '\\';
 			case 'u': {// unicode U+XXXX

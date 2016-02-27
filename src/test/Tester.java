@@ -3,9 +3,7 @@ package test;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import com.electronwill.toml.TOMLException;
 import com.electronwill.toml.Toml;
@@ -24,13 +22,6 @@ public class Tester {
 		URL urlHardExampleUnicode = Tester.class.getResource("ressources/hard-example-unicode.toml");
 		URL[] urls = { urlExample, urlHardExample, urlHardExampleUnicode };
 		test(urls);
-		Map<String, Object> map = new HashMap<>();
-		map.put("yolo", "egriheoigh _uç(-");
-		map.put("salut dd", 48468.256);
-		map.put("test", new HashMap());
-		map.put("testt", Arrays.asList(urls));
-		map.put("yolo.a", new int[] { 12, 52, 8, 0, -5 });
-		writeTest(map, "easyTest");
 	}
 	
 	private static void writeTest(Map<String, Object> map, String name) throws IOException {
