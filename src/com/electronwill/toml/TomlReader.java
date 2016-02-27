@@ -177,9 +177,11 @@ public final class TomlReader {
 			
 			// -- Saves the value --
 			Map<String, Object> valueMap = map;// the map that contains the value
+			System.out.println("keyParts: " + keyParts);
 			for (int i = 0; i < keyParts.size() - 1; i++) {
 				String part = keyParts.get(i);
-				valueMap = (Map) map.get(part);
+				valueMap = (Map) valueMap.get(part);
+				System.out.println("part: " + part + "; valueMap: " + valueMap);
 			}
 			if (twoBrackets) {// element of a table array
 				String name = keyParts.get(keyParts.size() - 1);
