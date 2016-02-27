@@ -4,10 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,33 +19,112 @@ public final class TomlReader {
 	
 	private final String data;
 	private int pos = 0;// current position
-	private int line = 1;// current line
-	
-	private char stoppedAt;// the char we stopped at in the last indexOf(char[]) method
-	private int lineRead = 0;// the number of lines read without incrementing the position
 	
 	public TomlReader(String data) {
 		this.data = data;
 	}
 	
-	public Map<String, Object> read() throws TOMLException {
-		Map<String, Object> map = readTableContent();
-		pos++;
-		while (pos < data.length()) {
-			char ch = data.charAt(pos);
-			boolean twoBrackets = (ch == '[');
+	private boolean hasNext() {
+		return pos < data.length();
+	}
+	
+	private char next() {
+		return data.charAt(pos++);
+	}
+	
+	private char nextUseful(boolean skipComments) {
+		char c = ' ';
+		while (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+			c = next();
+			if (c == '#' && skipComments)
+				pos = data.indexOf('\n', pos) + 1;
+		}
+		return c;
+	}
+	
+	private char nextUsefulOrLinebreak() {
+		char c = ' ';
+		while (c == ' ' || c == '\t')
+			c = next();
+		return c;
+	}
+	
+	private Object nextValue(char firstChar) {
+		char c2, c3, c4;
+		switch (firstChar) {
+			case '+':
+			case '-':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				return nextNumberOrDate(firstChar);
+			case '"':
+				c2 = next();
+				c3 = next();
+				if (c2 == '"' && c3 == '"')
+					return nextBasicMultilineString();
+				return nextBasicString();
+			case '\'':
+				c2 = next();
+				c3 = next();
+				if (c2 == '\'' && c3 == '\'')
+					return nextLiteralMultilineString();
+				return nextLiteralString();
+			case '[':
+				return nextArray();
+			case '{':
+				return nextInlineTable();
+			case 't':// Must be "true"
+				c2 = next();
+				c3 = next();
+				c4 = next();
+				if (c2 != 'r' || c3 != 'u' || c4 != 'e') {
+					throw new TOMLException("Invalid value at pos " + pos);
+				}
+				return true;
+			case 'f':// Must be "false"
+				c2 = next();
+				c3 = next();
+				c4 = next();
+				char c5 = next();
+				if (c2 != 'a' || c3 != 'l' || c4 != 's' || c5 != 'e') {
+					throw new TOMLException("Invalid value at pos " + pos);
+				}
+				return false;
+			default:
+				throw new TOMLException("Invalid character at pos " + pos);
+		}
+	}
+	
+	public Map<String, Object> read() {
+		Map<String, Object> map = nextTableContent();
+		
+		while (hasNext()) {
+			char c = nextUseful(true);
+			boolean twoBrackets = (c == '[');
 			
 			// --- Reads the key --
 			List<String> keyParts = new ArrayList<>(4);
 			StringBuilder keyBuilder = new StringBuilder();
 			while (true) {
-				if (pos >= data.length())
-					throw new TOMLException("Invalid table or table array element declaratio at line " + line + ": not enough data");
-				char next = data.charAt(pos++);
-				if (next == '\"') {
+				if (!hasNext())
+					throw new TOMLException("Invalid table declaration at pos " + pos + ": not enough data");
+				char next = nextUsefulOrLinebreak();
+				if (next == '"') {
 					keyParts.add(keyBuilder.toString().trim());
 					keyBuilder.setLength(0);
-					keyParts.add(readBasicString());
+					keyParts.add(nextBasicString());
+				} else if (next == '\'') {
+					keyParts.add(keyBuilder.toString().trim());
+					keyBuilder.setLength(0);
+					keyParts.add(nextLiteralString());
 				} else if (next == ']') {
 					keyParts.add(keyBuilder.toString().trim());
 					break;
@@ -55,7 +132,9 @@ public final class TomlReader {
 					keyParts.add(keyBuilder.toString().trim());
 					keyBuilder.setLength(0);
 				} else if (next == '#') {
-					throw new TOMLException("Invalid comment at line " + line);
+					throw new TOMLException("Invalid table name at pos " + pos + ": comments are not allowed here");
+				} else if (next == '\n' || next == '\r') {
+					throw new TOMLException("Invalid table name at pos " + pos + ": line breaks are not allowed here");
 				} else {
 					keyBuilder.append(next);
 				}
@@ -63,12 +142,12 @@ public final class TomlReader {
 			
 			// -- Check --
 			if (twoBrackets) {
-				if (data.charAt(pos++) != ']')// there are only one ] that ends the declaration -> error
-					throw new TOMLException("Missing character ] at line " + line);
+				if (next() != ']')// there are only one ] that ends the declaration -> error
+					throw new TOMLException("Missing character ] at pos " + pos);
 			}
 			
 			// -- Reads the value (table content) --
-			Map<String, Object> value = readTableContent();
+			Map<String, Object> value = nextTableContent();
 			pos++;
 			
 			// -- Saves the value --
@@ -93,177 +172,180 @@ public final class TomlReader {
 		return map;
 	}
 	
-	private Collection readArray() throws TOMLException {
-		Collection coll = new LinkedList();
+	private List nextArray() {
+		List<Object> list = new ArrayList<>();
 		while (true) {
-			boolean end = skipSpacesAndLines();
-			if (end)
-				throw new TOMLException("Invalid end of data: each array must be closed");
-			if (data.charAt(pos) == '#') {
-				goToNextLine();
-				continue;
+			char c = nextUseful(true);
+			if (c == ']') {
+				return list;
 			}
-			Object value = readValue(true, ']', ',', '#');
-			if (value == null) {// empty value
-				if (stoppedAt == ']')
-					break;
-				throw new TOMLException("Invalid empty value in the array at line " + line);
+			Object value = nextValue(c);
+			if (!list.isEmpty() && !(list.get(0).getClass().isAssignableFrom(value.getClass())))
+				throw new TOMLException("Invalid array at pos " + pos + ": all the values must have the same type");
+			list.add(value);
+			
+			char afterEntry = nextUseful(true);
+			if (afterEntry == ']') {
+				return list;
 			}
-			coll.add(value);
-			if (stoppedAt == ']') {
-				break;
+			if (afterEntry != ',') {
+				throw new TOMLException("Invalid array at pos " + pos + ": expected a comma after each value");
 			}
-			if (stoppedAt == '#')
-				goToNextLine();
 		}
-		return coll;
 	}
 	
-	private Map<String, Object> readTableContent() throws TOMLException {
+	private Map<String, Object> nextInlineTable() {
 		Map<String, Object> map = new HashMap<>();
 		while (true) {
-			boolean end = skipSpacesAndLines();
-			if (end || data.charAt(pos) == '[')
+			char nameFirstChar = nextUsefulOrLinebreak();
+			if (nameFirstChar == '}') {
 				return map;
-			if (data.charAt(pos) == '#') {
-				goToNextLine();
-				continue;
 			}
-			String key = readKey();
-			Object value = readValue(true, '\n', '#');
-			if (stoppedAt == '#')
-				goToNextLine();
-			map.put(key, value);
+			String name;
+			if (nameFirstChar == '"') {
+				char c2 = next(), c3 = next();
+				name = (c2 == '"' && c3 == '"') ? nextBasicMultilineString() : nextBasicString();
+			} else if (nameFirstChar == '\'') {
+				char c2 = next(), c3 = next();
+				name = (c2 == '\'' && c3 == '\'') ? nextLiteralMultilineString() : nextLiteralString();
+			} else {
+				name = nextBareKey();
+				if (data.charAt(pos - 1) == '=')
+					pos--;
+			}
+			char separator = nextUsefulOrLinebreak();
+			if (separator != '=') {
+				throw new TOMLException("Invalid key at pos " + pos);
+			}
+			
+			char valueFirstChar = nextUsefulOrLinebreak();
+			Object value = nextValue(valueFirstChar);
+			map.put(name, value);
+			
+			char after = nextUsefulOrLinebreak();
+			if (after == '}' || !hasNext()) {
+				return map;
+			} else if (after != ',') {
+				throw new TOMLException("Invalid inline table at pos " + pos + ": missing comma");
+			}
 		}
-		
 	}
 	
-	private Map<String, Object> readInlineTable() throws TOMLException {
+	private Map<String, Object> nextTableContent() {
 		Map<String, Object> map = new HashMap<>();
 		while (true) {
-			String key = readKey();
-			String valueStr = until(false, '}', ',', '#', '\n', '\r');
-			// TODO support multiline strings
-			if (stoppedAt == '\n' || stoppedAt == '\r')
-				throw new TOMLException("Invalid table array at line " + line + ": newlines not allowed");
-			Object value = parseValue(valueStr.trim());
-			map.put(key, value);
-			if (stoppedAt == '}')
+			char nameFirstChar = nextUseful(true);
+			String name;
+			if (nameFirstChar == '"') {
+				char c2 = next(), c3 = next();
+				name = (c2 == '"' && c3 == '"') ? nextBasicMultilineString() : nextBasicString();
+			} else if (nameFirstChar == '\'') {
+				char c2 = next(), c3 = next();
+				name = (c2 == '\'' && c3 == '\'') ? nextLiteralMultilineString() : nextLiteralString();
+			} else {
+				name = nextBareKey();
+				if (data.charAt(pos - 1) == '=')
+					pos--;
+			}
+			char separator = nextUseful(true);
+			if (separator != '=') {
+				throw new TOMLException("Invalid key at pos " + pos);
+			}
+			
+			char valueFirstChar = nextUseful(true);
+			Object value = nextValue(valueFirstChar);
+			map.put(name, value);
+			
+			char after = nextUseful(true);
+			if (after == '[' || !hasNext()) {
 				return map;
-			if (stoppedAt == '#')
-				goToNextLine();
-		}
-	}
-	
-	// goes after the = character
-	private String readKey() throws TOMLException {
-		final String key;
-		final char c = data.charAt(pos);
-		if (c == '"' || c == '\'') {
-			pos++;
-			key = (c == '"') ? readBasicString() : readLiteralString();
-			String space = until(false, '=');// goes after the =
-			for (int i = 0; i < space.length(); i++) {// checks if there is an invalid character between the key and '='
-				char shouldBeSpace = space.charAt(i);
-				if (shouldBeSpace != ' ' && shouldBeSpace != '\t')
-					throw new TOMLException("Invalid key at line " + line);
+			} else {
+				pos--;
 			}
-		} else {
-			key = until(false, '=').trim();
-			if (key.indexOf(' ') != -1)
-				throw new TOMLException("Invalid bare key at line " + line + " spaces/tabs not allowed");
-		}
-		return key;
-	}
-	
-	// goes after one of the characters of the "ends" array
-	private Object readValue(boolean acceptComments, char... ends) throws TOMLException {
-		skipSpacesAndLines();
-		final String valueStr;
-		final char c = data.charAt(pos++);
-		if (c == '[')
-			return readArray();
-		if (c == '{')
-			return readInlineTable();
-		if (c == '"' || c == '\'') {
-			// TODO support multiline strings
-			valueStr = (c == '"') ? readBasicString() : readLiteralString();
-			String space = until(acceptComments, ends);// goes after the end
-			for (int i = 0; i < space.length(); i++) {// checks if there is an invalid character after the value
-				char shouldBeSpace = space.charAt(i);
-				if (shouldBeSpace != ' ' && shouldBeSpace != '\t')
-					throw new TOMLException("Invalid value at line " + line);
-			}
-			return valueStr;
-		} else {
-			pos--;
-			valueStr = until(acceptComments, ends).trim();
-			if (valueStr.isEmpty())
-				return null;
-			if (valueStr.indexOf(' ') != -1)
-				throw new TOMLException("Invalid value at line " + line + " spaces/tabs not allowed");
-			return parseValue(valueStr);
 		}
 	}
 	
-	/**
-	 * Parses a boolean, an integer, a decimal number or a date.
-	 */
-	private Object parseValue(String valueStr) throws TOMLException {
-		if (valueStr.equals("true"))
-			return true;
-		if (valueStr.equals("false"))
-			return false;
-		boolean maybeInteger = true, maybeDouble = true, maybeDate = true;
-		for (int i = 0; i < valueStr.length(); i++) {
-			char c = valueStr.charAt(i);
+	private Object nextNumberOrDate(char first) {
+		boolean maybeDouble = true, maybeInteger = true, maybeDate = true;
+		StringBuilder sb = new StringBuilder();
+		sb.append(first);
+		char c;
+		while (hasNext()) {
+			c = next();
 			if (c == 'Z' || c == 'T' || c == ':')
 				maybeInteger = maybeDouble = false;
-			else if (c == 'e')
+			else if (c == 'e' || c == 'E')
 				maybeInteger = maybeDate = false;
 			else if (c == '.')
 				maybeInteger = false;
-			else if (c == '_')
-				maybeDate = false;
-			else if (c == '-' && i != 0 && valueStr.charAt(i - 1) != 'e')
+			else if (c == '-' && pos != 0 && data.charAt(pos - 1) != 'e' && data.charAt(pos - 1) != 'E')
 				maybeInteger = maybeDouble = false;
+			else if (c == ',' || c == ' ' || c == '\t' || c == ']' || c == '}')
+				break;
+				
+			if (c == '_')
+				maybeDate = false;
+			else
+				sb.append(c);
 		}
-		if (maybeInteger || maybeDouble) {
-			valueStr = valueStr.replace("_", "");
-			if (maybeInteger) {
-				if (valueStr.length() < 10)
-					return Integer.parseInt(valueStr);
-				return Long.parseLong(valueStr);
-			} else {
-				return Double.parseDouble(valueStr);
-			}
+		String valueStr = sb.toString();
+		if (maybeInteger) {
+			return (valueStr.length() < 10) ? Integer.parseInt(valueStr) : Long.parseLong(valueStr);
+		} else if (maybeDouble) {
+			return Double.parseDouble(valueStr);
 		} else if (maybeDate) {
 			return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
 		} else {
-			throw new TOMLException("Invalid value: " + valueStr + " at line " + line);
+			throw new TOMLException("Invalid value: " + valueStr + " at pos " + pos);
 		}
 	}
 	
-	private String readLiteralString() throws TOMLException {
-		int index = indexOf('\'');
+	private String nextBareKey() {
+		String keyName;
+		for (int i = pos; i < data.length(); i++) {
+			char c = data.charAt(i);
+			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
+				keyName = data.substring(pos, i);
+				pos = i;
+				return keyName;
+			}
+		}
+		throw new TOMLException(
+				"Invalid key/value pair at pos " + pos + " end of data reached before the value attached to the key was found");
+	}
+	
+	private String nextLiteralString() {
+		int index = data.indexOf('\'');
 		if (index == -1)
-			throw new TOMLException("Invalid literal String at line " + line + ": it never ends");
+			throw new TOMLException("Invalid literal String at pos " + pos + ": it never ends");
 		String str = data.substring(pos, index);
 		pos = index + 1;
-		line += lineRead;
-		lineRead = 0;
 		return str;
 	}
 	
-	private String readBasicString() throws TOMLException {
+	private String nextLiteralMultilineString() {
+		int index = data.indexOf("'''");
+		if (index == -1)
+			throw new TOMLException("Invalid literal String (multiline) at pos " + pos + ": it never ends");
+		String str;
+		if (data.charAt(pos) == '\r' && data.charAt(pos) == '\n') {
+			str = data.substring(pos + 2, index);
+		} else if (data.charAt(pos) == '\n' || data.charAt(pos) == '\r') {
+			str = data.substring(pos + 1, index);
+		} else {
+			str = data.substring(pos, index);
+		}
+		pos = index + 1;
+		return str;
+	}
+	
+	private String nextBasicString() {
 		StringBuilder sb = new StringBuilder();
 		boolean escape = false;
-		while (true) {
-			if (pos >= data.length())
-				throw new TOMLException("Invalid basic String at line " + line + ": it nerver ends");
-			char ch = data.charAt(pos++);
-			if (ch == '\n')
-				throw new TOMLException("Invalid basic String at line " + line + ": newlines not allowed");
+		while (hasNext()) {
+			char ch = next();
+			if (ch == '\n' || ch == '\r')
+				throw new TOMLException("Invalid basic String at pos " + pos + ": newlines not allowed");
 			if (escape) {
 				sb.append(unescape(ch));
 				escape = false;
@@ -275,66 +357,11 @@ public final class TomlReader {
 				sb.append(ch);
 			}
 		}
+		throw new TOMLException("Invalid basic String at pos " + pos + ": it nerver ends");
 	}
 	
-	private int indexOf(char c) {
-		for (int i = pos; i < data.length(); i++) {
-			char ch = data.charAt(i);
-			if (ch == '\n')
-				lineRead++;
-			if (ch == c)
-				return i;
-		}
-		return -1;
-	}
-	
-	private int indexOf(char... cs) {
-		for (int i = pos; i < data.length(); i++) {
-			char c = data.charAt(i);
-			if (c == '\n')
-				lineRead++;
-			for (char ch : cs) {
-				if (ch == c) {
-					stoppedAt = c;
-					return i;
-				}
-			}
-		}
-		return -1;
-	}
-	
-	/**
-	 * @return true if it reached the end of the data.
-	 */
-	private boolean skipSpacesAndLines() {
-		for (; pos < data.length(); pos++) {
-			char c = data.charAt(pos);
-			if (c == '\n')
-				line++;
-			if (c != ' ' && c != '\t' && c != '\n')
-				return false;
-		}
-		return true;
-	}
-	
-	private void goToNextLine() {
-		pos = data.indexOf('\n', pos) + 1;
-		line++;
-	}
-	
-	private String until(boolean acceptComments, char... cs) throws TOMLException {
-		int index = indexOf(cs);
-		if (index == -1)
-			throw new TOMLException("Invalid data at line " + line + ": expected one of the following characters: " + Arrays.toString(cs));
-			
-		String str = data.substring(pos, index);
-		if (!acceptComments && str.contains("#"))
-			throw new TOMLException("Invalid comment at line " + line);
-			
-		line += lineRead;
-		lineRead = 0;
-		pos = index + 1;// after the character we stopped at
-		return str;
+	private String nextBasicMultilineString() {
+		return "TODO";// TODO
 	}
 	
 	private char unescape(char c) throws TOMLException {
