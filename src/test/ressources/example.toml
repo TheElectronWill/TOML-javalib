@@ -36,6 +36,14 @@ hosts = [
   "omega"
 ]
 
+# Added by TheElectronWill:
+multiline = """
+Line 01
+Line 02\
+
+
+Line 03"""
+
 # Products
 
   [[products]]
