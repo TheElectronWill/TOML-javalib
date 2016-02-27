@@ -11,6 +11,11 @@ import java.util.Map;
 
 /**
  * Class for reading TOML v0.4.0.
+ * <h1>About newlines</h1>
+ * <p>
+ * This reader only supports '\n' and "\r\n" as newlines. Any '\r' not followed by '\n' causes some issues. This should
+ * not be a problem, because the modern operating systems use '\n' (Linux, OSX) or "\r\n" (Windows).
+ * </p>
  * 
  * @author TheElectronWill
  * 		
