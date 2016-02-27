@@ -281,7 +281,6 @@ public final class TomlReader {
 			if (!hasNext() || nameFirstChar == '[') {
 				return map;
 			}
-			System.out.println("nameFirstChar: " + nameFirstChar);
 			String name = null;
 			switch (nameFirstChar) {
 				case '"': {
@@ -326,7 +325,6 @@ public final class TomlReader {
 			
 			char valueFirstChar = nextUseful(true);
 			Object value = nextValue(valueFirstChar);
-			System.out.println("value: " + value);
 			map.put(name, value);
 			
 			char after = nextUseful(true);
