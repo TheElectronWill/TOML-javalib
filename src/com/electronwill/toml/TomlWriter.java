@@ -146,7 +146,14 @@ public final class TomlWriter {
 	}
 	
 	private void writeString(String str) throws IOException {
-		write(escape('"', str, '"'));
+		StringBuilder sb = new StringBuilder();
+		sb.append('"');
+		for (int i = 0; i < str.length(); i++) {
+			char c = str.charAt(i);
+			addEscaped(c, sb);
+		}
+		sb.append('"');
+		write(sb.toString());
 	}
 	
 	private void writeArray(Collection c) throws IOException {
@@ -280,37 +287,33 @@ public final class TomlWriter {
 		}
 	}
 	
-	private String escape(char prefix, String str, char suffix) {
-		StringBuilder sb = new StringBuilder();
-		sb.append(prefix);
-		for (int i = 0; i < str.length(); i++) {
-			char c = str.charAt(i);
-			switch (c) {
-				case '\b':
-					sb.append("\\b");
-					break;
-				case '\t':
-					sb.append("\\t");
-					break;
-				case '\n':
-					sb.append("\\n");
-					break;
-				case '\\':
-					sb.append("\\\\");
-					break;
-				case '\r':
-					sb.append("\\r");
-					break;
-				case '\f':
-					sb.append("\\f");
-					break;
-				default:
-					sb.append(c);
-					break;
-			}
+	static void addEscaped(char c, StringBuilder sb) {
+		switch (c) {
+			case '\b':
+				sb.append("\\b");
+				break;
+			case '\t':
+				sb.append("\\t");
+				break;
+			case '\n':
+				sb.append("\\n");
+				break;
+			case '\\':
+				sb.append("\\\\");
+				break;
+			case '\r':
+				sb.append("\\r");
+				break;
+			case '\f':
+				sb.append("\\f");
+				break;
+			case '"':
+				sb.append("\\\"");
+				break;
+			default:
+				sb.append(c);
+				break;
 		}
-		sb.append(suffix);
-		return sb.toString();
 	}
 	
 }
