@@ -36,8 +36,10 @@ public final class TomlReader {
 		char c = ' ';
 		while (hasNext() && (c == ' ' || c == '\t' || c == '\r' || c == '\n' || (c == '#' && skipComments))) {
 			c = next();
-			if (c == '#')
-				pos = data.indexOf('\n', pos) + 1;
+			if (c == '#') {
+				int nextLinebreak = data.indexOf('\n', pos);
+				pos = (nextLinebreak == -1) ? data.length() : nextLinebreak + 1;
+			}
 		}
 		return c;
 	}
