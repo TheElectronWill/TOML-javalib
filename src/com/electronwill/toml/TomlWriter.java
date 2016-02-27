@@ -146,10 +146,7 @@ public final class TomlWriter {
 	}
 	
 	private void writeString(String str) throws IOException {
-		if (str.indexOf('\'') == -1)
-			write('\'' + str + '\'');
-		else
-			write(escape('\"', str, '\"'));
+		write(escape('"', str, '"'));
 	}
 	
 	private void writeArray(Collection c) throws IOException {
