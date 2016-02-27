@@ -326,13 +326,6 @@ public final class TomlReader {
 			char valueFirstChar = nextUseful(true);
 			Object value = nextValue(valueFirstChar);
 			map.put(name, value);
-			
-			char after = nextUseful(true);
-			if (after == '[' || !hasNext()) {
-				return map;
-			} else {
-				pos--;
-			}
 		}
 	}
 	
