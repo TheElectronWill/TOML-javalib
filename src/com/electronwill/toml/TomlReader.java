@@ -110,6 +110,7 @@ public final class TomlReader {
 		while (hasNext()) {
 			char c = nextUseful(true);
 			boolean twoBrackets = (c == '[');
+			pos--;
 			
 			// --- Reads the key --
 			List<String> keyParts = new ArrayList<>(4);
