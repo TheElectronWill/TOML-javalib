@@ -25,5 +25,5 @@ You may also use the TomlReader and TomlWriter classes directly.
 ## What does currently work?
 The TomlReader is complete. It successfully parses the test files of the "test/ressources" folder.
 
-The TomlWriter works and is very fast, but it has a little problem: it may write the single key/value pair (those who are in the root table) at the end of the file, which is invalid. Furthermore, it does writes complex keys (such as "parent.child1.child2") correctly.  
+The TomlWriter works and is very fast, but it has a little problem: it may write the single key/value pair (those who are in the root table) at the end of the file, which is invalid. Furthermore, it does NOT write complex keys (such as "parent.child1.child2") correctly.  
 
