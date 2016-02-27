@@ -478,7 +478,7 @@ public final class TomlReader {
 		throw new TOMLException("Invalid multiline basic String at pos " + pos + ": it never ends");
 	}
 	
-	private char unescape(char c) throws TOMLException {
+	private char unescape(char c) {
 		switch (c) {
 			case 'b':
 				return '\b';
