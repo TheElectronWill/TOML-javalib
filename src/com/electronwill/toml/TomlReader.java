@@ -125,7 +125,13 @@ public final class TomlReader {
 		
 		while (hasNext()) {
 			char c = nextUseful(true);
-			boolean twoBrackets = (c == '[');
+			boolean twoBrackets;
+			if (c == '[') {
+				twoBrackets = true;
+				c = nextUseful(false);
+			} else {
+				twoBrackets = false;
+			}
 			pos--;
 			
 			// --- Reads the key --
