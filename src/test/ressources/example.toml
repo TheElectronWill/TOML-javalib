@@ -2,6 +2,7 @@
 # This is a TOML document. Boom.
 
 title = "TOML Example"
+unicode = "\u+00FF"
 
 [owner]
 name = "Tom Preston-Werner"
