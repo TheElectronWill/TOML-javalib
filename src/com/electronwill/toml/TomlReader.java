@@ -54,7 +54,7 @@ public final class TomlReader {
 		char c = ' ';
 		while (hasNext() && (c == ' ' || c == '\t' || c == '\r' || c == '\n' || (c == '#' && skipComments))) {
 			c = next();
-			if (c == '#') {
+			if (skipComments && c == '#') {
 				int nextLinebreak = data.indexOf('\n', pos);
 				if (nextLinebreak == -1) {
 					pos = data.length();
@@ -367,12 +367,16 @@ public final class TomlReader {
 						pos--;
 					break;
 			}
-			char separator = nextUseful(true);
-			if (separator != '=') {
+			char separator = nextUsefulOrLinebreak();
+			if (separator == '\n')
+				throw new TOMLException("Invalid newline in bare-key at line " + (line - 1));
+			if (separator != '=')
 				throw new TOMLException("Invalid data at line " + line);
+				
+			char valueFirstChar = nextUsefulOrLinebreak();
+			if (valueFirstChar == '\n') {
+				throw new TOMLException("Invalid newline before the value at line " + line);
 			}
-			
-			char valueFirstChar = nextUseful(false);
 			Object value = nextValue(valueFirstChar);
 			map.put(name, value);
 		}
