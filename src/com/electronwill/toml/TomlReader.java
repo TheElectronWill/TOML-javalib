@@ -79,6 +79,7 @@ public final class TomlReader {
 	}
 	
 	private Object nextValue(char firstChar) {
+		System.out.println("fc: " + firstChar);
 		switch (firstChar) {
 			case '+':
 			case '-':
@@ -417,15 +418,19 @@ public final class TomlReader {
 				sb.append(c);
 		}
 		String valueStr = sb.toString();
-		if (maybeInteger)
-			return (valueStr.length() < 10) ? Integer.parseInt(valueStr) : Long.parseLong(valueStr);
-			
-		if (maybeDouble)
-			return Double.parseDouble(valueStr);
-			
-		if (maybeDate)
-			return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
-			
+		try {
+			if (maybeInteger)
+				return (valueStr.length() < 10) ? Integer.parseInt(valueStr) : Long.parseLong(valueStr);
+				
+			if (maybeDouble)
+				return Double.parseDouble(valueStr);
+				
+			if (maybeDate)
+				return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
+		} catch (Exception ex) {
+			throw new TOMLException("Invalid value: " + valueStr + " at line " + line, ex);
+		}
+		
 		throw new TOMLException("Invalid value: " + valueStr + " at line " + line);
 	}
 	
@@ -560,22 +565,32 @@ public final class TomlReader {
 				return '"';
 			case '\\':
 				return '\\';
-			case 'u': {// unicode U+XXXX
-				if (data.length() - pos < 4)
-					throw new TOMLException("Invalid unicode point: not enough data");
+			case 'u': {// unicode u+XXXX
+				if (data.length() - pos < 5 || next() != '+')
+					throw new TOMLException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 4);
-				int hexVal = Integer.parseInt(unicode, 16);
-				return (char) hexVal;
+				pos += 4;
+				try {
+					int hexVal = Integer.parseInt(unicode, 16);
+					return (char) hexVal;
+				} catch (NumberFormatException ex) {
+					throw new TOMLException("Invalid unicode code point at line " + line, ex);
+				}
 			}
 			case 'U': {// unicode U+XXXXXXXX
-				if (data.length() - pos < 8)
-					throw new TOMLException("Invalid end of data");
+				if (data.length() - pos < 9 || next() != '+')
+					throw new TOMLException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 8);
-				int hexVal = Integer.parseInt(unicode, 16);
-				return (char) hexVal;
+				pos += 8;
+				try {
+					int hexVal = Integer.parseInt(unicode, 16);
+					return (char) hexVal;
+				} catch (NumberFormatException ex) {
+					throw new TOMLException("Invalid unicode code point at line " + line, ex);
+				}
 			}
 			default:
-				throw new TOMLException("Invalid escape sequence: \\" + c);
+				throw new TOMLException("Invalid escape sequence: \\" + c + " at line " + line);
 		}
 	}
 	
