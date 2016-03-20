@@ -39,7 +39,7 @@ public class Tester {
 			printMap(read);
 			System.out.println("=================================");
 			String[] urlParts = url.getPath().split("/");
-			// writeTest(read, urlParts[urlParts.length - 1]);
+			writeTest(read, urlParts[urlParts.length - 1]);
 		}
 	}
 	
