@@ -287,7 +287,10 @@ public final class TomlWriter {
 		} else if (value instanceof Number) {
 			write(value.toString());
 		} else if (value instanceof TemporalAccessor) {
-			write(Toml.DATE_FORMATTER.format((TemporalAccessor) value));
+			String formatted = Toml.DATE_FORMATTER.format((TemporalAccessor) value);
+			if (formatted.endsWith("T"))// If the last character is a 'T'
+				formatted = formatted.substring(0, formatted.length() - 1);// removes it because it's invalid.
+			write(formatted);
 		} else if (value instanceof int[]) {
 			writeArray((int[]) value);
 		} else if (value instanceof byte[]) {
