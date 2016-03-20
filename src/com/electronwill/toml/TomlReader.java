@@ -16,6 +16,18 @@ import java.util.Map;
  * This reader only supports '\n' and "\r\n" as newlines. Any '\r' not followed by '\n' causes some issues. This should
  * not be a problem, because the modern operating systems use '\n' (Linux, OSX) or "\r\n" (Windows).
  * </p>
+ * <h1>DateTimes support</h1>
+ * <p>
+ * The datetime support is more extended than in the TOML specification. This reader supports three kind of datetimes:
+ * <ol>
+ * <li>Full RFC 3339. Examples: 1979-05-27T07:32:00Z, 1979-05-27T00:32:00-07:00, 1979-05-27T00:32:00.999999-07:00</li>
+ * <li>Without local offset. Examples: 1979-05-27T07:32:00, 1979-05-27T00:32:00.999999</li>
+ * <li>Without time (just the date). Example: 2015-03-20</li>
+ * </ol>
+ * Moreover, parsing datetimes gives different objects according to the informations provided. For example, 2015-03-20
+ * is parsed as a {@link LocalDate}, 2015-03-20T19:04:35 as a {@link LocalDateTime}, and 2015-03-20T19:04:35+01:00 as a
+ * {@link ZonedDateTime}.
+ * </p>
  * 
  * @author TheElectronWill
  * 		

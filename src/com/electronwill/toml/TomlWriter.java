@@ -2,6 +2,9 @@ package com.electronwill.toml;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.Iterator;
@@ -10,6 +13,11 @@ import java.util.Map;
 
 /**
  * Class for writing TOML v0.4.0.
+ * <h1>DateTimes support</h1>
+ * <p>
+ * Any {@link TemporalAccessor} may be added in a Map passed to this writer, this writer can only write three kind of
+ * datetimes:{@link LocalDate}, {@link LocalDateTime} and {@link ZonedDateTime}.
+ * </p>
  * 
  * @author TheElectronWill
  * 		
