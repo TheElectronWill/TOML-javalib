@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -17,7 +19,9 @@ public final class TomlWriter {
 	private final Writer writer;
 	private final int indentSize;
 	private final char indentCharacter;
-	private int indentationLevel = -1;// to prevent indenting first level
+	private int indentationLevel = -1;// -1 to prevent indenting the first level
+	private LinkedList<String> tablesNames = new LinkedList<>();
+	private int lineBreaks = 0;
 	
 	/**
 	 * Creates a new TomlWriter with the defaults parameters. This is exactly the same as
@@ -70,59 +74,100 @@ public final class TomlWriter {
 		writeTableContent(data);
 	}
 	
+	private void writeTableName() throws IOException {
+		Iterator<String> it = tablesNames.iterator();
+		while (it.hasNext()) {
+			String namePart = it.next();
+			writeKey(namePart);
+			if (it.hasNext())
+				write('.');
+		}
+	}
+	
 	private void writeTableContent(Map<String, Object> table) throws IOException {
-		indentationLevel++;
+		writeTableContent(table, true);
+		writeTableContent(table, false);
+	}
+	
+	/**
+	 * Writes the content of a table.
+	 * 
+	 * @param table the table to write
+	 * @param simpleValues true to write only the simple values (and the normal arrays), false to write only the tables
+	 *        (and the arrays of tables).
+	 */
+	private void writeTableContent(Map<String, Object> table, boolean simpleValues) throws IOException {
 		for (Map.Entry<String, Object> entry : table.entrySet()) {
 			String name = entry.getKey();
 			Object value = entry.getValue();
-			if (value instanceof Collection) {
+			if (value instanceof Collection) {// array
 				Collection c = (Collection) value;
 				if (!c.isEmpty() && c.iterator().next() instanceof Map) {// array of tables
+					if (simpleValues)
+						continue;
+					tablesNames.addLast(name);
 					indentationLevel++;
 					for (Object element : c) {
 						indent();
 						write("[[");
-						writeKey(name);
+						writeTableName();
 						write("]]\n");
 						Map<String, Object> map = (Map) element;
 						writeTableContent(map);
 					}
 					indentationLevel--;
+					tablesNames.removeLast();
 				} else {// normal array
+					if (!simpleValues)
+						continue;
 					indent();
 					writeKey(name);
 					write(" = ");
 					writeArray(c);
 				}
-			} else if (value instanceof Object[]) {
+			} else if (value instanceof Object[]) {// array
 				Object[] array = (Object[]) value;
 				if (array.length > 0 && array[0] instanceof Map) {// array of tables
+					if (simpleValues)
+						continue;
+					tablesNames.addLast(name);
 					indentationLevel++;
 					for (Object element : array) {
 						indent();
 						write("[[");
-						writeKey(name);
+						writeTableName();
 						write("]]\n");
 						Map<String, Object> map = (Map) element;
 						writeTableContent(map);
 					}
 					indentationLevel--;
+					tablesNames.removeLast();
 				} else {// normal array
+					if (!simpleValues)
+						continue;
 					indent();
 					writeKey(name);
 					write(" = ");
 					writeArray(array);
 				}
-			} else if (value instanceof Map) {
+			} else if (value instanceof Map) {// table
+				if (simpleValues)
+					continue;
+				tablesNames.addLast(name);
 				indentationLevel++;
+				
 				indent();
 				write('[');
-				writeKey(name);
+				writeTableName();
 				write(']');
 				newLine();
 				writeTableContent((Map) value);
+				
 				indentationLevel--;
-			} else {
+				tablesNames.removeLast();
+			} else {// simple value
+				if (!simpleValues)
+					continue;
 				indent();
 				writeKey(name);
 				write(" = ");
@@ -130,7 +175,6 @@ public final class TomlWriter {
 			}
 			newLine();
 		}
-		indentationLevel--;
 		newLine();
 	}
 	
@@ -268,21 +312,26 @@ public final class TomlWriter {
 	}
 	
 	private void newLine() throws IOException {
-		writer.write('\n');
+		if (lineBreaks <= 1) {
+			writer.write('\n');
+			lineBreaks++;
+		}
 	}
 	
 	private void write(char c) throws IOException {
 		writer.write(c);
+		lineBreaks = 0;
 	}
 	
 	private void write(String str) throws IOException {
 		writer.write(str);
+		lineBreaks = 0;
 	}
 	
 	private void indent() throws IOException {
 		for (int i = 0; i < indentationLevel; i++) {
 			for (int j = 0; j < indentSize; j++) {
-				writer.write(indentCharacter);
+				write(indentCharacter);
 			}
 		}
 	}
