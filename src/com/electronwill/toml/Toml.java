@@ -11,12 +11,31 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Map;
 
 /**
- * Utility class for reading and writing TOML v0.4.0.
+ * Utility class for reading and writing TOML v0.4.0. This class internally uses {@link TomlReader} and
+ * {@link TomlWriter}.
+ * 
+ * <h1>Newlines support</h1>
+ * <p>
+ * Only '\n' and "\r\n" are supported as newlines. This should not be a problem, because all the modern operating
+ * systems use '\n' (Linux, OSX) or "\r\n" (Windows).
+ * </p>
+ * <h1>DateTimes support</h1>
+ * <p>
+ * The datetime support is more extended than in the TOML specification. The reader and the writer support three kind of
+ * datetimes:
+ * <ol>
+ * <li>Full RFC 3339. Example: 2015-03-20T19:26:00+01:00 => represented as {@link ZonedDateTime}</li>
+ * <li>Without local offset. Examples: 2015-03-20T19:26:00 => represented as {@link LocalDateTime}</li>
+ * <li>Without time (just the date). Example: 2015-03-20 => represented as {@link LocalDate}</li>
+ * </p>
  * 
  * @author TheElectronWill
  * 		
@@ -110,30 +129,18 @@ public final class Toml {
 	
 	/**
 	 * Reads a String that contains TOML data.
-	 * <p>
-	 * <b>WARNING: the <code>String <i>toml</i></code> must indicate newlines ONLY with the '\n' (aka LF) character. It
-	 * must not contains the '\r' character nor the "\r\n" sequence.</b> This method does not check if
-	 * <code>String <i>toml</i></code> contains the forbidden '\r' character. It's up to the caller to do it.
-	 * </p>
 	 * 
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
 	 * @throws TOMLException
 	 */
-	public static Map<String, Object> readLineFeedOnlyString(String toml) throws TOMLException {
-		/*
-		List<Integer> newlines = new ArrayList<>();
-		for (int i = 0; i < toml.length(); i++) {
-			if (toml.charAt(i) == '\n')
-				newlines.add(i);
-		}*/
+	public static Map<String, Object> read(String toml) throws TOMLException {
 		TomlReader tr = new TomlReader(toml);
 		return tr.read();
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded File. The data may contains the "\r\n" sequence, because any "\r\n"
-	 * sequence found in the data read by the Reader is replaced by a single '\n' character.
+	 * Reads TOML data from an UTF-8 encoded File.
 	 * 
 	 * @param file the File to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -145,8 +152,7 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded InputStream. The data may contains the "\r\n" sequence, because any "\r\n"
-	 * sequence found in the data read by the Reader is replaced by a single '\n' character.
+	 * Reads TOML data from an UTF-8 encoded InputStream.
 	 * 
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -158,9 +164,7 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>. The data may contains the "\r\n"
-	 * sequence, because any "\r\n" sequence found in the data read by the Reader is replaced by a single '\n'
-	 * character.
+	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>.
 	 * 
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -168,29 +172,10 @@ public final class Toml {
 	 */
 	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException, TOMLException {
 		StringBuilder sb = new StringBuilder(stringBuilderSize);
-		// List<Integer> newlines = new ArrayList<>();
-		
 		char[] buf = new char[8192];
 		int read;
-		boolean wasCR = false;
 		while ((read = reader.read(buf)) != -1) {
-			for (int i = 0; i < read; i++) {
-				char c = buf[i];
-				if (wasCR) {
-					if (c != '\n')
-						sb.append(c);
-					wasCR = false;
-				} else if (c == '\r') {
-					wasCR = true;
-					// newlines.add(sb.length());
-					sb.append('\n');
-				} else if (c == '\n') {
-					// newlines.add(sb.length());
-					sb.append('\n');
-				} else {
-					sb.append(c);
-				}
-			}
+			sb.append(buf, 0, read);
 		}
 		TomlReader tr = new TomlReader(sb.toString());
 		return tr.read();
