@@ -79,7 +79,6 @@ public final class TomlReader {
 	}
 	
 	private Object nextValue(char firstChar) {
-		System.out.println("fc: " + firstChar);
 		switch (firstChar) {
 			case '+':
 			case '-':
@@ -248,9 +247,7 @@ public final class TomlReader {
 				throw new TOMLException("Invalid array at line " + line + ": all the values must have the same type");
 			list.add(value);
 			
-			System.out.println("current: " + data.charAt(pos) + ", in: " + data.substring(pos - 10, pos + 10));
 			char afterEntry = nextUseful(true);
-			System.out.println("afterEntry: " + afterEntry);
 			if (afterEntry == ']') {
 				pos++;
 				break;
