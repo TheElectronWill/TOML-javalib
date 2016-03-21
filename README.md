@@ -20,7 +20,20 @@ Map<String, Object> data = ...//put your data in a Map
 Toml.write(data, file);
 ```
 
-You may also use the TomlReader and TomlWriter classes directly.  
+You may also use the TomlReader and TomlWriter classes directly.
+
+## Data types
+The TOML data is mapped to the following java types:
+
+TOML | Java
+---- | ----
+Integer | `int` or `long` (it depend on the size)
+Decimal | `double`
+String (all types of string: basic, literal, multiline, ...) | `String`
+DateTime | `ZonedDateTime`, `LocalDateTime` or `LocalDate` (it depends on what informations are available, see the comments in Toml.java)
+Array | `List`
+Table | `Map<String, Object>`
+
 
 ## What does currently work?
 Everything works fine! A valid TOML data is correctly parsed, and the TOMLWriter produces valid TOML files. The detection of errors could be improved a little.
