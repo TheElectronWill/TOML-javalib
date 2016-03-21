@@ -27,7 +27,7 @@ The TOML data is mapped to the following java types:
 
 TOML | Java
 ---- | ----
-Integer | `int` or `long` (it depend on the size)
+Integer | `int` or `long` (it depends on the size)
 Decimal | `double`
 String (all types of string: basic, literal, multiline, ...) | `String`
 DateTime | `ZonedDateTime`, `LocalDateTime` or `LocalDate` (it depends on what informations are available, see the comments in Toml.java)
