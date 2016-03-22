@@ -35,6 +35,22 @@ import java.util.Map;
  * <li>Full RFC 3339. Example: 2015-03-20T19:26:00+01:00 => represented as {@link ZonedDateTime}</li>
  * <li>Without local offset. Examples: 2015-03-20T19:26:00 => represented as {@link LocalDateTime}</li>
  * <li>Without time (just the date). Example: 2015-03-20 => represented as {@link LocalDate}</li>
+ * </ol>
+ * </p>
+ * <h1>Lenient bare keys</h1>
+ * <p>
+ * This library allows "lenient" bare keys by default, as opposite to the "strict" bare keys which are required by the
+ * TOML specification. Strict bare keys may only contain letters, numbers, underscores, and dashes (A-Za-z0-9_-).
+ * Lenient bare keys may contain any character except those before the space character in the unicode table (tabs,
+ * newlines and many unprintables characters), spaces, points, square brackets and equal signs (. [ ] =).
+ * </p>
+ * <p>
+ * The default setting when reading TOML data is lenient. You may set the behaviour regarding bare keys with the methods
+ * {@link #read(String, boolean)} and {@link #read(Reader, int, boolean)}, or by creating a {@link TomlReader} yourself.
+ * </p>
+ * <p>
+ * The {@link TomlWriter} always outputs data which strictly follows the TOML specification. Any key that contains one
+ * or more non-strictly valid character is surrounded by quotes.
  * </p>
  * 
  * @author TheElectronWill
@@ -90,7 +106,8 @@ public final class Toml {
 	 * 
 	 * @param data the data to write
 	 * @param file where to write the data
-	 * @throws IOException if an error occurs
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static void write(Map<String, Object> data, OutputStream out) throws IOException {
 		OutputStreamWriter writer = new OutputStreamWriter(out, StandardCharsets.UTF_8);
@@ -103,7 +120,8 @@ public final class Toml {
 	 * 
 	 * @param data the data to write
 	 * @param writer where to write the data
-	 * @throws IOException if an error occurs
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static void write(Map<String, Object> data, Writer writer) throws IOException {
 		TomlWriter tw = new TomlWriter(writer);
@@ -119,7 +137,8 @@ public final class Toml {
 	 * @param indentSize the indentation size, ie the number of times the indentation character is repeated in one
 	 *        indent.
 	 * @param indentWithSpaces true to indent with spaces, false to indent with tabs
-	 * @throws IOException if an error occurs
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static void write(Map<String, Object> data, Writer writer, int indentSize, boolean indentWithSpaces) throws IOException {
 		TomlWriter tw = new TomlWriter(writer, indentSize, indentWithSpaces);
@@ -128,56 +147,84 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads a String that contains TOML data.
+	 * Reads a String that contains TOML data. The strict bare keys are disabled, ie bare keys may contain any character
+	 * except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see
+	 * {@link #read(String, boolean)}.
 	 * 
+	 * @param toml a String containing TOML data
 	 * @return a {@code Map<String, Object>} containing the parsed data
-	 * @throws IOException if an error occurs
-	 * @throws TomlException
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static Map<String, Object> read(String toml) throws TomlException {
-		TomlReader tr = new TomlReader(toml);
+		return read(toml, false);
+	}
+	
+	/**
+	 * Reads a String that contains TOML data.
+	 * 
+	 * @param toml a String containing TOML data
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys. Strict bare keys may only contain
+	 *        letters, numbers, underscores, and dashes (A-Za-z0-9_-), while lenient bare keys may contain any character
+	 *        except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see the
+	 *        documentation of Toml.java).
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
+	 */
+	public static Map<String, Object> read(String toml, boolean strictAsciiBareKeys) {
+		TomlReader tr = new TomlReader(toml, strictAsciiBareKeys);
 		return tr.read();
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded File.
+	 * Reads TOML data from an UTF-8 encoded File. The strict bare keys are disabled (see
+	 * {@link #read(Reader, int, boolean)}.
 	 * 
 	 * @param file the File to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
-	 * @throws IOException if an error occurs
-	 * @throws TomlException
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static Map<String, Object> read(File file) throws IOException, TomlException {
 		return read(new FileInputStream(file));
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded InputStream.
+	 * Reads TOML data from an UTF-8 encoded InputStream. The strict bare keys are disabled (see
+	 * {@link #read(Reader, int, boolean)}.
 	 * 
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
-	 * @throws IOException if an error occurs
-	 * @throws TomlException
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
 	public static Map<String, Object> read(InputStream in) throws IOException, TomlException {
-		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available());
+		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available(), false);
 	}
 	
 	/**
 	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>.
 	 * 
 	 * @param in the InputStream to read data from
+	 * @param stringBuilderSize the initial size of the StringBuilder which is internally used
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys. Strict bare keys may only contain
+	 *        letters, numbers, underscores, and dashes (A-Za-z0-9_-), while lenient bare keys may contain any character
+	 *        except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see the
+	 *        documentation of Toml.java).
 	 * @return a {@code Map<String, Object>} containing the parsed data
-	 * @throws IOException if an error occurs
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
 	 */
-	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException, TomlException {
+	public static Map<String, Object> read(Reader reader, int stringBuilderSize, boolean strictAsciiBareKeys)
+			throws IOException, TomlException {
 		StringBuilder sb = new StringBuilder(stringBuilderSize);
 		char[] buf = new char[8192];
 		int read;
 		while ((read = reader.read(buf)) != -1) {
 			sb.append(buf, 0, read);
 		}
-		TomlReader tr = new TomlReader(sb.toString());
+		TomlReader tr = new TomlReader(sb.toString(), strictAsciiBareKeys);
 		return tr.read();
 	}
 	

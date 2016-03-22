@@ -28,6 +28,13 @@ import java.util.Map;
  * is parsed as a {@link LocalDate}, 2015-03-20T19:04:35 as a {@link LocalDateTime}, and 2015-03-20T19:04:35+01:00 as a
  * {@link ZonedDateTime}.
  * </p>
+ * <h1>Lenient bare keys</h1>
+ * <p>
+ * This library allows "lenient" bare keys by default, as opposite to the "strict" bare keys required by the TOML
+ * specification. Strict bare keys may only contain letters, numbers, underscores, and dashes (A-Za-z0-9_-). Lenient
+ * bare keys may contain any character except those below the space character ' ' in the unicode table, '.', '[', ']'
+ * and '='. The behaviour of TomlReader regarding bare keys is set in its constructor.
+ * </p>
  * 
  * @author TheElectronWill
  * 		
@@ -35,11 +42,20 @@ import java.util.Map;
 public final class TomlReader {
 	
 	private final String data;
+	private final boolean strictAsciiBareKeys;
 	private int pos = 0;// current position
 	private int line = 1;// current line
 	
-	public TomlReader(String data) {
+	/**
+	 * Creates a new TomlReader.
+	 * 
+	 * @param data the TOML data to read
+	 * @param strictAsciiBareKeys <code>true</false> to allow only strict bare keys, <code>false</code> to allow lenient
+	 *        ones.
+	 */
+	public TomlReader(String data, boolean strictAsciiBareKeys) {
 		this.data = data;
+		this.strictAsciiBareKeys = strictAsciiBareKeys;
 	}
 	
 	private boolean hasNext() {
@@ -193,6 +209,11 @@ public final class TomlReader {
 					case '\r':
 						throw new TomlException("Invalid table name at line " + line + ": line breaks are not allowed here");
 					default:
+						if (strictAsciiBareKeys && !isValidInStrictBareKey(next) && next != ' ') {
+							throw new TomlException("Invalid character '" + next + "' in strict bare-key at line " + line);
+						} else if (next < ' ' || next == '[') {
+							throw new TomlException("Invalid character '" + next + "' in bare-key at line " + line);
+						}
 						keyBuilder.append(next);
 						break;
 				}
@@ -429,17 +450,21 @@ public final class TomlReader {
 			if (maybeDate)
 				return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
 		} catch (Exception ex) {
-			throw new TomlException("Invalid value: " + valueStr + " at line " + line, ex);
+			throw new TomlException("Invalid value: \"" + valueStr + "\" at line " + line, ex);
 		}
 		
-		throw new TomlException("Invalid value: " + valueStr + " at line " + line);
+		throw new TomlException("Invalid value: \"" + valueStr + "\" at line " + line);
 	}
 	
 	private String nextBareKey() {
 		String keyName;
 		for (int i = pos; i < data.length(); i++) {
 			char c = data.charAt(i);
-			if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) {
+			if (strictAsciiBareKeys && c != ' ') {
+				if (!isValidInStrictBareKey(c))
+					throw new TomlException("Invalid character '" + c + "' in strict bare-key at line " + line);
+			} else if (c <= ' ' || c == '=' || c == '.' || c == '[' || c == ']') {// Allows more characters in the
+																					// bare-key
 				keyName = data.substring(pos, i);
 				pos = i;
 				return keyName;
@@ -593,6 +618,10 @@ public final class TomlReader {
 			default:
 				throw new TomlException("Invalid escape sequence: \\" + c + " at line " + line);
 		}
+	}
+	
+	private boolean isValidInStrictBareKey(char c) {
+		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-');
 	}
 	
 }
