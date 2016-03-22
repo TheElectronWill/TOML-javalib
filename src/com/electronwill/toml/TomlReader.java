@@ -144,7 +144,7 @@ public final class TomlReader {
 				}
 				return false;
 			default:
-				throw new TomlException("Invalid character at line " + line);
+				throw new TomlException("Invalid character '" + firstChar + "' at line " + line);
 		}
 	}
 	
@@ -389,13 +389,20 @@ public final class TomlReader {
 			if (separator == '\n' || separator == '\r')
 				throw new TomlException("Invalid newline in bare-key at line " + (line - 1));
 			if (separator != '=')
-				throw new TomlException("Invalid data at line " + line);
+				throw new TomlException("Invalid separator '" + separator + "' at line " + line);
 				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			if (valueFirstChar == '\n') {
 				throw new TomlException("Invalid newline before the value at line " + line);
 			}
 			Object value = nextValue(valueFirstChar);
+			
+			char afterEntry = nextUsefulOrLinebreak();
+			if (afterEntry == '#') {
+				pos--;// to make the next nextUseful() call read the # character
+			} else if (afterEntry != '\n') {
+				throw new TomlException("Invalid character '" + afterEntry + "' after the value at line " + line);
+			}
 			map.put(name, value);
 		}
 	}
