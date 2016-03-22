@@ -132,9 +132,9 @@ public final class Toml {
 	 * 
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
-	 * @throws TOMLException
+	 * @throws TomlException
 	 */
-	public static Map<String, Object> read(String toml) throws TOMLException {
+	public static Map<String, Object> read(String toml) throws TomlException {
 		TomlReader tr = new TomlReader(toml);
 		return tr.read();
 	}
@@ -145,9 +145,9 @@ public final class Toml {
 	 * @param file the File to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
-	 * @throws TOMLException
+	 * @throws TomlException
 	 */
-	public static Map<String, Object> read(File file) throws IOException, TOMLException {
+	public static Map<String, Object> read(File file) throws IOException, TomlException {
 		return read(new FileInputStream(file));
 	}
 	
@@ -157,9 +157,9 @@ public final class Toml {
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
-	 * @throws TOMLException
+	 * @throws TomlException
 	 */
-	public static Map<String, Object> read(InputStream in) throws IOException, TOMLException {
+	public static Map<String, Object> read(InputStream in) throws IOException, TomlException {
 		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available());
 	}
 	
@@ -170,7 +170,7 @@ public final class Toml {
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if an error occurs
 	 */
-	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException, TOMLException {
+	public static Map<String, Object> read(Reader reader, int stringBuilderSize) throws IOException, TomlException {
 		StringBuilder sb = new StringBuilder(stringBuilderSize);
 		char[] buf = new char[8192];
 		int read;

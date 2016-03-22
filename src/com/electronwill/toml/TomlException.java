@@ -5,21 +5,21 @@ package com.electronwill.toml;
  *
  * @author TheElectronWill
  */
-public class TOMLException extends RuntimeException {
+public class TomlException extends RuntimeException {
 	
 	private static final long serialVersionUID = 1L;
 	
-	public TOMLException() {}
+	public TomlException() {}
 	
-	public TOMLException(String message, Throwable cause) {
+	public TomlException(String message, Throwable cause) {
 		super(message, cause);
 	}
 	
-	public TOMLException(String message) {
+	public TomlException(String message) {
 		super(message);
 	}
 	
-	public TOMLException(Throwable cause) {
+	public TomlException(Throwable cause) {
 		super(cause);
 	}
 	

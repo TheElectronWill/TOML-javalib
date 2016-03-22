@@ -119,16 +119,16 @@ public final class TomlReader {
 				return nextInlineTable();
 			case 't':// Must be "true"
 				if (pos + 3 >= data.length() || next() != 'r' || next() != 'u' || next() != 'e') {
-					throw new TOMLException("Invalid value at line " + line);
+					throw new TomlException("Invalid value at line " + line);
 				}
 				return true;
 			case 'f':// Must be "false"
 				if (pos + 4 >= data.length() || next() != 'a' || next() != 'l' || next() != 's' || next() != 'e') {
-					throw new TOMLException("Invalid value at line " + line);
+					throw new TomlException("Invalid value at line " + line);
 				}
 				return false;
 			default:
-				throw new TOMLException("Invalid character at line " + line);
+				throw new TomlException("Invalid character at line " + line);
 		}
 	}
 	
@@ -151,7 +151,7 @@ public final class TomlReader {
 			StringBuilder keyBuilder = new StringBuilder();
 			whileLoop: while (true) {
 				if (!hasNext())
-					throw new TOMLException("Invalid table declaration at line " + line + ": not enough data");
+					throw new TomlException("Invalid table declaration at line " + line + ": not enough data");
 				char next = nextUsefulOrLinebreak();
 				switch (next) {
 					case '"': {
@@ -181,17 +181,17 @@ public final class TomlReader {
 					case '.': {
 						String current = keyBuilder.toString().trim();
 						if (current.length() == 0) {
-							throw new TOMLException("Invalid table name at line " + line + ": empty value are not allowed here");
+							throw new TomlException("Invalid table name at line " + line + ": empty value are not allowed here");
 						}
 						keyParts.add(current);
 						keyBuilder.setLength(0);
 						break;
 					}
 					case '#':
-						throw new TOMLException("Invalid table name at line " + line + ": comments are not allowed here");
+						throw new TomlException("Invalid table name at line " + line + ": comments are not allowed here");
 					case '\n':
 					case '\r':
-						throw new TOMLException("Invalid table name at line " + line + ": line breaks are not allowed here");
+						throw new TomlException("Invalid table name at line " + line + ": line breaks are not allowed here");
 					default:
 						keyBuilder.append(next);
 						break;
@@ -201,7 +201,7 @@ public final class TomlReader {
 			// -- Check --
 			if (twoBrackets) {
 				if (next() != ']')// there are only one ] that ends the declaration -> error
-					throw new TOMLException("Missing character ] at line " + line);
+					throw new TomlException("Missing character ] at line " + line);
 			}
 			
 			// -- Reads the value (table content) --
@@ -244,7 +244,7 @@ public final class TomlReader {
 			}
 			Object value = nextValue(c);
 			if (!list.isEmpty() && !(list.get(0).getClass().isAssignableFrom(value.getClass())))
-				throw new TOMLException("Invalid array at line " + line + ": all the values must have the same type");
+				throw new TomlException("Invalid array at line " + line + ": all the values must have the same type");
 			list.add(value);
 			
 			char afterEntry = nextUseful(true);
@@ -253,7 +253,7 @@ public final class TomlReader {
 				break;
 			}
 			if (afterEntry != ',') {
-				throw new TOMLException("Invalid array at line " + line + ": expected a comma after each value");
+				throw new TomlException("Invalid array at line " + line + ": expected a comma after each value");
 			}
 		}
 		pos--;
@@ -304,7 +304,7 @@ public final class TomlReader {
 			
 			char separator = nextUsefulOrLinebreak();
 			if (separator != '=') {
-				throw new TOMLException("Invalid data at line " + line);
+				throw new TomlException("Invalid data at line " + line);
 			}
 			
 			char valueFirstChar = nextUsefulOrLinebreak();
@@ -315,7 +315,7 @@ public final class TomlReader {
 			if (after == '}' || !hasNext()) {
 				return map;
 			} else if (after != ',') {
-				throw new TOMLException("Invalid inline table at line " + line + ": missing comma");
+				throw new TomlException("Invalid inline table at line " + line + ": missing comma");
 			}
 		}
 	}
@@ -365,14 +365,14 @@ public final class TomlReader {
 					break;
 			}
 			char separator = nextUsefulOrLinebreak();
-			if (separator == '\n')
-				throw new TOMLException("Invalid newline in bare-key at line " + (line - 1));
+			if (separator == '\n' || separator == '\r')
+				throw new TomlException("Invalid newline in bare-key at line " + (line - 1));
 			if (separator != '=')
-				throw new TOMLException("Invalid data at line " + line);
+				throw new TomlException("Invalid data at line " + line);
 				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			if (valueFirstChar == '\n') {
-				throw new TOMLException("Invalid newline before the value at line " + line);
+				throw new TomlException("Invalid newline before the value at line " + line);
 			}
 			Object value = nextValue(valueFirstChar);
 			map.put(name, value);
@@ -429,10 +429,10 @@ public final class TomlReader {
 			if (maybeDate)
 				return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
 		} catch (Exception ex) {
-			throw new TOMLException("Invalid value: " + valueStr + " at line " + line, ex);
+			throw new TomlException("Invalid value: " + valueStr + " at line " + line, ex);
 		}
 		
-		throw new TOMLException("Invalid value: " + valueStr + " at line " + line);
+		throw new TomlException("Invalid value: " + valueStr + " at line " + line);
 	}
 	
 	private String nextBareKey() {
@@ -445,18 +445,18 @@ public final class TomlReader {
 				return keyName;
 			}
 		}
-		throw new TOMLException(
+		throw new TomlException(
 				"Invalid key/value pair at line " + line + " end of data reached before the value attached to the key was found");
 	}
 	
 	private String nextLiteralString() {
 		int index = data.indexOf('\'', pos);
 		if (index == -1)
-			throw new TOMLException("Invalid literal String at line " + line + ": it never ends");
+			throw new TomlException("Invalid literal String at line " + line + ": it never ends");
 			
 		String str = data.substring(pos, index);
 		if (str.indexOf('\n') != -1)
-			throw new TOMLException("Invalid literal String at line " + line + ": newlines are not allowed here");
+			throw new TomlException("Invalid literal String at line " + line + ": newlines are not allowed here");
 			
 		pos = index + 1;
 		return str;
@@ -465,7 +465,7 @@ public final class TomlReader {
 	private String nextLiteralMultilineString() {
 		int index = data.indexOf("'''", pos);
 		if (index == -1)
-			throw new TOMLException("Invalid multiline literal String at line " + line + ": it never ends");
+			throw new TomlException("Invalid multiline literal String at line " + line + ": it never ends");
 		String str;
 		if (data.charAt(pos) == '\r' && data.charAt(pos + 1) == '\n') {// "\r\n" at the beginning of the string
 			str = data.substring(pos + 2, index);
@@ -491,7 +491,7 @@ public final class TomlReader {
 		while (hasNext()) {
 			char c = next();
 			if (c == '\n' || c == '\r')
-				throw new TOMLException("Invalid basic String at line " + line + ": newlines not allowed");
+				throw new TomlException("Invalid basic String at line " + line + ": newlines not allowed");
 			if (escape) {
 				sb.append(unescape(c));
 				escape = false;
@@ -503,7 +503,7 @@ public final class TomlReader {
 				sb.append(c);
 			}
 		}
-		throw new TOMLException("Invalid basic String at line " + line + ": it nerver ends");
+		throw new TomlException("Invalid basic String at line " + line + ": it nerver ends");
 	}
 	
 	private String nextBasicMultilineString() {
@@ -547,7 +547,7 @@ public final class TomlReader {
 				sb.append(c);
 			}
 		}
-		throw new TOMLException("Invalid multiline basic String at line " + line + ": it never ends");
+		throw new TomlException("Invalid multiline basic String at line " + line + ": it never ends");
 	}
 	
 	private char unescape(char c) {
@@ -568,30 +568,30 @@ public final class TomlReader {
 				return '\\';
 			case 'u': {// unicode u+XXXX
 				if (data.length() - pos < 5 || next() != '+')
-					throw new TOMLException("Invalid unicode code point at line " + line);
+					throw new TomlException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 4);
 				pos += 4;
 				try {
 					int hexVal = Integer.parseInt(unicode, 16);
 					return (char) hexVal;
 				} catch (NumberFormatException ex) {
-					throw new TOMLException("Invalid unicode code point at line " + line, ex);
+					throw new TomlException("Invalid unicode code point at line " + line, ex);
 				}
 			}
 			case 'U': {// unicode U+XXXXXXXX
 				if (data.length() - pos < 9 || next() != '+')
-					throw new TOMLException("Invalid unicode code point at line " + line);
+					throw new TomlException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 8);
 				pos += 8;
 				try {
 					int hexVal = Integer.parseInt(unicode, 16);
 					return (char) hexVal;
 				} catch (NumberFormatException ex) {
-					throw new TOMLException("Invalid unicode code point at line " + line, ex);
+					throw new TomlException("Invalid unicode code point at line " + line, ex);
 				}
 			}
 			default:
-				throw new TOMLException("Invalid escape sequence: \\" + c + " at line " + line);
+				throw new TomlException("Invalid escape sequence: \\" + c + " at line " + line);
 		}
 	}
 	
