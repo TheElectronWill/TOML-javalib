@@ -87,8 +87,11 @@ public final class TomlReader {
 	
 	private char nextUsefulOrLinebreak() {
 		char c = ' ';
-		while (c == ' ' || c == '\t' || c == '\r')
+		while (c == ' ' || c == '\t' || c == '\r') {
+			if (!hasNext())// fixes error when no '\n' at the end of the file
+				return '\n';
 			c = next();
+		}
 		if (c == '\n')
 			line++;
 		return c;
@@ -232,7 +235,14 @@ public final class TomlReader {
 			Map<String, Object> valueMap = map;// the map that contains the value
 			for (int i = 0; i < keyParts.size() - 1; i++) {
 				String part = keyParts.get(i);
-				Map<String, Object> childMap = (Map) valueMap.get(part);
+				Object child = valueMap.get(part);
+				Map<String, Object> childMap;
+				if (child instanceof Map) {
+					childMap = (Map) child;
+				} else {
+					List<Map> list = (List) child;
+					childMap = list.get(list.size() - 1);
+				}
 				if (childMap == null) {
 					childMap = new HashMap<>(4);
 					valueMap.put(part, childMap);
