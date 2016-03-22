@@ -54,8 +54,14 @@ Line 02"""
   [[products]]
   name = "Hammer"
   sku = 738594937
+  
+    [products.sub]
+    test = "yes IT WORKS!"
 
   [[products]]
   name = "Nail"
   sku = 284758393
   color = "gray"
+  
+    [products.sub]
+  	test = "in the second element of the \"products\" array"
