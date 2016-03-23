@@ -154,6 +154,9 @@ public final class TomlReader {
 	public Map<String, Object> read() {
 		Map<String, Object> map = nextTableContent();
 		
+		if (!hasNext() && data.charAt(pos - 1) == '[')
+			throw new TomlException("Invalid table declaration at line " + line + ": it never ends");
+			
 		while (hasNext()) {
 			char c = nextUseful(true);
 			boolean twoBrackets;
@@ -170,7 +173,7 @@ public final class TomlReader {
 			boolean insideSquareBrackets = true;
 			while (insideSquareBrackets) {
 				if (!hasNext())
-					throw new TomlException("Invalid table declaration at line " + line + ": not enough data");
+					throw new TomlException("Invalid table declaration at line " + line + ": it never ends");
 					
 				String name = null;
 				char nameFirstChar = nextUseful(false);
@@ -206,7 +209,6 @@ public final class TomlReader {
 					default:
 						pos--;// to include the first (already read) non-space character
 						name = nextBareKey(']', '.').trim();
-						
 						if (data.charAt(pos) == ']') {
 							if (!name.isEmpty())
 								keyParts.add(name);
@@ -222,7 +224,10 @@ public final class TomlReader {
 					keyParts.add(name.trim());
 			}
 			
-			// -- Check --
+			// -- Checks --
+			if (keyParts.isEmpty())
+				throw new TomlException("Invalid empty key at line " + line);
+				
 			if (twoBrackets && next() != ']') {// 2 brackets at the start but only one at the end!
 				throw new TomlException("Missing character ']' at line " + line);
 			}
