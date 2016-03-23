@@ -39,7 +39,7 @@ This library supports (since v1.1) "lenient" **and** "strict" bare keys. Strict 
 
                    | Strict bare keys (TOML specification) | Lenient bare keys (this library)
 -------------------|-------------------------|---------------------------
-**May contain** | ASCII alphanumeric characters only: A-Z a-z 0-9 _ -   | Any character after the space one (in the unicode table), excepting: . [ ] # =
+**May contain** | ASCII alphanumeric characters only: `A-Z a-z 0-9 _ -`   | Any character after the space one in the unicode table, except the following ones: `. [ ] # =`
 
 By default, this library will be lenient when reading some TOML data. You may choose to be strict by adding some parameters to the read method:
 ```java
@@ -47,8 +47,7 @@ String dataString = ... //your TOML data
 map = Toml.read(dataString);//lenient. This actually calls Toml.read(dataString, false)
 map = Toml.read(dataString, true);//strict!
 ```
-Note that you cannot enable the strict mode with all the read() methods.  
-The TOMLWriter is not affected by this feature: it will always output data compliant with the TOML specification. Any key with a non strictly valid character will be surrounded by quotes.
+Write operations are *not* affected by this feature: they will always output data in compliance with the TOML specification. Any key with a non strictly valid character will be surrounded by quotes.
 
 ## What does currently work?
 Everything works fine! A valid TOML data is correctly parsed, and the TOMLWriter produces valid TOML files. There might be some minor improvement to do and some features to add.
