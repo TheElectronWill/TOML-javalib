@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Map;
-import com.electronwill.toml.TomlException;
 import com.electronwill.toml.Toml;
+import com.electronwill.toml.TomlException;
 
 /**
  * Tests the TOML library.
