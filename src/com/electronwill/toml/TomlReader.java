@@ -35,7 +35,7 @@ import java.util.Map;
  * bare keys may contain any character except those below the space character ' ' in the unicode table, '.', '[', ']'
  * and '='. The behaviour of TomlReader regarding bare keys is set in its constructor.
  * </p>
- * 
+ *
  * @author TheElectronWill
  * 		
  */
@@ -48,7 +48,7 @@ public final class TomlReader {
 	
 	/**
 	 * Creates a new TomlReader.
-	 * 
+	 *
 	 * @param data the TOML data to read
 	 * @param strictAsciiBareKeys <code>true</false> to allow only strict bare keys, <code>false</code> to allow lenient
 	 *        ones.
@@ -167,66 +167,56 @@ public final class TomlReader {
 			
 			// --- Reads the key --
 			List<String> keyParts = new ArrayList<>(4);
-			StringBuilder keyBuilder = new StringBuilder();
-			whileLoop: while (true) {
+			boolean insideSquareBrackets = true;
+			while (insideSquareBrackets) {
 				if (!hasNext())
 					throw new TomlException("Invalid table declaration at line " + line + ": not enough data");
-				char next = nextUsefulOrLinebreak();
-				switch (next) {
+					
+				String name = null;
+				char nameFirstChar = nextUseful(false);
+				switch (nameFirstChar) {
 					case '"': {
-						String current = keyBuilder.toString().trim();
-						if (!current.isEmpty()) {
-							keyParts.add(current);
-							keyBuilder.setLength(0);
+						if (pos + 1 < data.length()) {
+							char c2 = data.charAt(pos);
+							char c3 = data.charAt(pos + 1);
+							if (c2 == '"' && c3 == '"') {
+								pos += 2;
+								name = nextBasicMultilineString();
+							}
 						}
-						keyParts.add(nextBasicString());
+						if (name == null) {
+							name = nextBasicString();
+						}
 						break;
 					}
 					case '\'': {
-						String current = keyBuilder.toString().trim();
-						if (!current.isEmpty()) {
-							keyParts.add(current);
-							keyBuilder.setLength(0);
+						if (pos + 1 < data.length()) {
+							char c2 = data.charAt(pos);
+							char c3 = data.charAt(pos + 1);
+							if (c2 == '\'' && c3 == '\'') {
+								pos += 2;
+								name = nextLiteralMultilineString();
+							}
 						}
-						keyParts.add(nextLiteralString());
+						if (name == null) {
+							name = nextLiteralString();
+						}
 						break;
 					}
-					case ']': {
-						String current = keyBuilder.toString().trim();
-						if (!current.isEmpty()) {
-							keyParts.add(current);
-						}
-						break whileLoop;
-					}
-					case '.': {
-						String current = keyBuilder.toString().trim();
-						if (current.isEmpty()) {
-							throw new TomlException("Invalid table name at line " + line + ": empty value are not allowed here");
-						}
-						keyParts.add(current);
-						keyBuilder.setLength(0);
-						break;
-					}
-					case '#':
-						throw new TomlException("Invalid table name at line " + line + ": comments are not allowed here");
-					case '\n':
-					case '\r':
-						throw new TomlException("Invalid table name at line " + line + ": line breaks are not allowed here");
 					default:
-						if (strictAsciiBareKeys && !isValidInStrictBareKey(next) && next != ' ') {
-							throw new TomlException("Invalid character '" + next + "' in strict bare-key at line " + line);
-						} else if (next < ' ' || next == '[') {
-							throw new TomlException("Invalid character '" + next + "' in bare-key at line " + line);
-						}
-						keyBuilder.append(next);
+						pos--;// to include the first (already read) non-space character
+						name = nextBareKey(']', '.');
+						if (data.charAt(pos) == ']')
+							insideSquareBrackets = false;
+						pos++;// to go after the character we stopped at in nextBareKey()
 						break;
 				}
+				keyParts.add(name.trim());
 			}
 			
 			// -- Check --
-			if (twoBrackets) {
-				if (next() != ']')// there are only one ] that ends the declaration -> error
-					throw new TomlException("Missing character ] at line " + line);
+			if (twoBrackets && next() != ']') {// 2 brackets at the start but only one at the end!
+				throw new TomlException("Missing character ']' at line " + line);
 			}
 			
 			// -- Reads the value (table content) --
@@ -327,17 +317,15 @@ public final class TomlReader {
 					break;
 				}
 				default:
-					name = nextBareKey();
-					if (data.charAt(pos - 1) == '=')
-						pos--;
+					pos--;// to include the first (already read) non-space character
+					name = nextBareKey(' ', '\t', '=');
 					break;
 			}
 			
-			char separator = nextUsefulOrLinebreak();
-			if (separator != '=') {
-				throw new TomlException("Invalid data at line " + line);
-			}
-			
+			char separator = nextUsefulOrLinebreak();// tries to find the '=' sign
+			if (separator != '=')
+				throw new TomlException("Invalid character '" + separator + "' at line " + line + ": expected '='");
+				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			Object value = nextValue(valueFirstChar);
 			map.put(name, value);
@@ -389,17 +377,13 @@ public final class TomlReader {
 					break;
 				}
 				default:
-					pos--;
-					name = nextBareKey();
-					if (pos > 1 && data.charAt(pos - 1) == '=')
-						pos--;
+					pos--;// to include the first (already read) non-space character
+					name = nextBareKey(' ', '\t', '=');
 					break;
 			}
-			char separator = nextUsefulOrLinebreak();
-			if (separator == '\n' || separator == '\r')
-				throw new TomlException("Invalid newline in bare-key at line " + (line - 1));
-			if (separator != '=')
-				throw new TomlException("Invalid separator '" + separator + "' at line " + line);
+			char separator = nextUsefulOrLinebreak();// tries to find the '=' sign
+			if (separator != '=')// an other character
+				throw new TomlException("Invalid character '" + separator + "' at line " + line + ": expected '='");
 				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			if (valueFirstChar == '\n') {
@@ -474,19 +458,23 @@ public final class TomlReader {
 		throw new TomlException("Invalid value: \"" + valueStr + "\" at line " + line);
 	}
 	
-	private String nextBareKey() {
+	private String nextBareKey(char... allowedEnds) {
 		String keyName;
 		for (int i = pos; i < data.length(); i++) {
 			char c = data.charAt(i);
-			if (strictAsciiBareKeys && c != ' ') {
-				if (!isValidInStrictBareKey(c))
-					throw new TomlException("Invalid character '" + c + "' in strict bare-key at line " + line);
-			} else if (c <= ' ' || c == '=' || c == '.' || c == '[' || c == ']') {// Allows more characters in the
-																					// bare-key
-				keyName = data.substring(pos, i);
-				pos = i;
-				return keyName;
+			for (char allowedEnd : allowedEnds) {
+				if (c == allowedEnd) {// checks if this character allowed to end this bare key
+					keyName = data.substring(pos, i);
+					pos = i;
+					return keyName;
+				}
 			}
+			if (strictAsciiBareKeys) {
+				if (!isValidInStrictBareKey(c))
+					throw new TomlException("Forbidden character '" + c + "' in strict bare-key at line " + line);
+			} else if (c <= ' ' || c == '#' || c == '=' || c == '.' || c == '[' || c == ']') {// lenient bare key
+				throw new TomlException("Forbidden character '" + c + "' in lenient bare-key at line " + line);
+			} // else continue reading
 		}
 		throw new TomlException(
 				"Invalid key/value pair at line " + line + " end of data reached before the value attached to the key was found");
