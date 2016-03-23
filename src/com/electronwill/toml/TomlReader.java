@@ -154,7 +154,7 @@ public final class TomlReader {
 	public Map<String, Object> read() {
 		Map<String, Object> map = nextTableContent();
 		
-		if (!hasNext() && pos > 1 && data.charAt(pos - 1) == '[')
+		if (!hasNext() && pos > 0 && data.charAt(pos - 1) == '[')
 			throw new TomlException("Invalid table declaration at line " + line + ": it never ends");
 			
 		while (hasNext()) {
