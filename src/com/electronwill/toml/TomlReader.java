@@ -237,15 +237,14 @@ public final class TomlReader {
 				String part = keyParts.get(i);
 				Object child = valueMap.get(part);
 				Map<String, Object> childMap;
-				if (child instanceof Map) {
+				if (child == null) {
+					childMap = new HashMap<>(4);
+					valueMap.put(part, childMap);
+				} else if (child instanceof Map) {
 					childMap = (Map) child;
 				} else {
 					List<Map> list = (List) child;
 					childMap = list.get(list.size() - 1);
-				}
-				if (childMap == null) {
-					childMap = new HashMap<>(4);
-					valueMap.put(part, childMap);
 				}
 				valueMap = childMap;
 			}
