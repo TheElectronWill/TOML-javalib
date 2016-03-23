@@ -23,13 +23,11 @@ public class Tester {
 	private static final File invalidFolder = new File("./test-invalid");// contains invalid TOML files
 	
 	public static void main(String[] args) throws IOException, TomlException, URISyntaxException {
-		/*
 		System.out.println("---------------- Testing with valid files ----------------");
 		for (File file : validFolder.listFiles()) {
 			if (file.isFile() && file.getName().endsWith(".toml"))
 				readAndRewriteTest(file, false);
 		}
-		*/
 		
 		System.out.println("---------------- Testing with invalid files ----------------");
 		List<String> noException = new LinkedList<>();
