@@ -24,8 +24,8 @@ import java.util.Map;
  * 
  * <h1>Newlines support</h1>
  * <p>
- * Only '\n' and "\r\n" are supported as newlines. This should not be a problem, because all the modern operating
- * systems use '\n' (Linux, OSX) or "\r\n" (Windows).
+ * Only '\n' and "\r\n" are supported as newlines. '\r' alone is NOT supported. This should not be a problem, because
+ * all the modern operating systems use '\n' (Linux, OSX) or "\r\n" (Windows).
  * </p>
  * <h1>DateTimes support</h1>
  * <p>
