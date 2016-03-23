@@ -597,8 +597,8 @@ public final class TomlReader {
 				return '"';
 			case '\\':
 				return '\\';
-			case 'u': {// unicode u+XXXX
-				if (data.length() - pos < 5 || next() != '+')
+			case 'u': {// unicode uXXXX
+				if (data.length() - pos < 5)
 					throw new TomlException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 4);
 				pos += 4;
@@ -609,8 +609,8 @@ public final class TomlReader {
 					throw new TomlException("Invalid unicode code point at line " + line, ex);
 				}
 			}
-			case 'U': {// unicode U+XXXXXXXX
-				if (data.length() - pos < 9 || next() != '+')
+			case 'U': {// unicode UXXXXXXXX
+				if (data.length() - pos < 9)
 					throw new TomlException("Invalid unicode code point at line " + line);
 				String unicode = data.substring(pos, pos + 8);
 				pos += 8;
