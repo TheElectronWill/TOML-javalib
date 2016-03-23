@@ -28,18 +28,36 @@ public class Tester {
 		if (!name.endsWith(".toml")) {
 			name += ".toml";
 		}
-		File file = new File("Writing " + name);
+		File file = new File(name);
+		System.out.println("Writing \"" + name + "\"...");
+		
+		long t0 = System.nanoTime();
 		Toml.write(map, file);
+		double time = (System.nanoTime() - t0) / (1000_000.0);
+		System.out.println("Written in " + time + " milliseconds");
 	}
 	
 	private static void test(URL[] urls) throws IOException, TomlException {
 		for (URL url : urls) {
-			System.out.println("Reading " + url);
+			System.out.println("========== " + url + " ==========");
+			System.out.println("Reading...");
+			
+			long t0 = System.nanoTime();
 			Map<String, Object> read = Toml.read(url.openStream());
-			printMap(read);
-			System.out.println("=================================");
-			String[] urlParts = url.getPath().split("/");
-			writeTest(read, urlParts[urlParts.length - 1]);
+			double time = (System.nanoTime() - t0) / (1000_000.0);
+			System.out.println("Read in " + time + " milliseconds");
+			
+			/*
+			 * Uncomment to print the map.
+			 * System.out.println("====== Data output =======");
+			 * printMap(read);
+			 * System.out.println("====== End of data =======");
+			*/
+			
+			String[] urlParts = url.toString().split("/");
+			writeTest(read, "rewrite-" + urlParts[urlParts.length - 1]);
+			
+			System.out.println();
 		}
 	}
 	
