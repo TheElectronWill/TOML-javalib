@@ -414,6 +414,9 @@ public final class TomlReader {
 			} else if (afterEntry != '\n') {
 				throw new TomlException("Invalid character '" + toString(afterEntry) + "' after the value at line " + line);
 			}
+			if (map.containsKey(name))
+				throw new TomlException("Duplicate key \"" + name + "\"");
+				
 			map.put(name, value);
 		}
 	}
