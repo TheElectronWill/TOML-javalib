@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import com.electronwill.toml.Toml;
 import com.electronwill.toml.TomlException;
@@ -21,21 +23,32 @@ public class Tester {
 	private static final File invalidFolder = new File("./test-invalid");// contains invalid TOML files
 	
 	public static void main(String[] args) throws IOException, TomlException, URISyntaxException {
+		/*
 		System.out.println("---------------- Testing with valid files ----------------");
 		for (File file : validFolder.listFiles()) {
 			if (file.isFile() && file.getName().endsWith(".toml"))
 				readAndRewriteTest(file, false);
 		}
+		*/
 		
 		System.out.println("---------------- Testing with invalid files ----------------");
+		List<String> noException = new LinkedList<>();
 		for (File file : invalidFolder.listFiles()) {
 			if (file.isFile() && file.getName().endsWith(".toml")) {
 				try {
-					readTest(file, false);
+					Map<String, Object> read = readTest(file, false);
+					printMap(read);
+					noException.add(file.getName());
+					System.err.println("/!\\ No exception thrown when reading an invalid file!");
+					System.err.println();
 				} catch (Exception ex) {
-					ex.printStackTrace();
+					System.out.println("--> " + ex.toString());
+					System.out.println();
 				}
 			}
+		}
+		for (String s : noException) {
+			System.err.println("[!] No exception thrown when reading " + s);
 		}
 	}
 	
