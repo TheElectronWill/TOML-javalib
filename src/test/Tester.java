@@ -29,6 +29,12 @@ public class Tester {
 				readAndRewriteTest(file, false);
 		}
 		
+		System.out.println("---------------- Testing with rewritten valid files ----------------");
+		for (File file : outputFolder.listFiles()) {
+			if (file.isFile() && file.getName().endsWith(".toml"))
+				readTest(file, false);
+		}
+		
 		System.out.println("---------------- Testing with invalid files ----------------");
 		List<String> noException = new LinkedList<>();
 		for (File file : invalidFolder.listFiles()) {
@@ -80,12 +86,13 @@ public class Tester {
 			printMap(read);
 			System.out.println("====== End of data =======");
 		}
+		System.out.println();
 		return read;
 	}
 	
 	private static void readAndRewriteTest(File file, boolean print) throws IOException, TomlException {
 		String[] pathParts = file.getPath().split("/");
-		System.out.println("========== " + pathParts[pathParts.length - 2] + "/" + pathParts[pathParts.length - 1] + " ==========");
+		System.out.println("====== " + pathParts[pathParts.length - 2] + "/" + pathParts[pathParts.length - 1] + " ======");
 		Map<String, Object> data = readTest(file, print);
 		File out = new File(outputFolder, file.getName());
 		writeTest(out, data);
