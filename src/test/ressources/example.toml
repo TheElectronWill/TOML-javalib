@@ -10,7 +10,7 @@ organization = "GitHub"
 bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
 dob = 1979-05-27T07:32:00Z # First class dates? Why not?
 testDate = 2015-03-20
-été = "Yes it's a french word, with accents!"
+été = "Yes it's a french word, with accents!" #This will only work in lenient mode
 inlineTable = {256 = 0.123456789, "basic"='literal',}
 "there are spaces here" = "here too, my friend!"
 
