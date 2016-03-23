@@ -39,7 +39,7 @@ This library supports (since v1.1) "lenient" **and** "strict" bare keys. Strict 
 
                    | Strict bare keys (TOML specification) | Lenient bare keys (this library)
 -------------------|-------------------------|---------------------------
-**May contain** | ASCII alphanumeric characters only: A-Z a-z 0-9 _ -   | Any character after the space one (in the unicode table), excepting points, square brackets and equal signs ( . [ ] = )
+**May contain** | ASCII alphanumeric characters only: A-Z a-z 0-9 _ -   | Any character after the space one (in the unicode table), excepting: . [ ] # =
 
 By default, this library will be lenient when reading some TOML data. You may choose to be strict by adding some parameters to the read method:
 ```java
