@@ -42,7 +42,8 @@ import java.util.Map;
  * This library allows "lenient" bare keys by default, as opposite to the "strict" bare keys which are required by the
  * TOML specification. Strict bare keys may only contain letters, numbers, underscores, and dashes (A-Za-z0-9_-).
  * Lenient bare keys may contain any character except those before the space character in the unicode table (tabs,
- * newlines and many unprintables characters), spaces, points, square brackets and equal signs (. [ ] =).
+ * newlines and many unprintables characters), spaces, points, square brackets, number signs and equal signs (. [ ] #
+ * =).
  * </p>
  * <p>
  * The default setting when reading TOML data is lenient. You may set the behaviour regarding bare keys with the methods
@@ -147,9 +148,7 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads a String that contains TOML data. The strict bare keys are disabled, ie bare keys may contain any character
-	 * except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see
-	 * {@link #read(String, boolean)}.
+	 * Reads a String that contains TOML data. Lenient bare keys are allowed (see {@link Toml}).
 	 * 
 	 * @param toml a String containing TOML data
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -164,10 +163,7 @@ public final class Toml {
 	 * Reads a String that contains TOML data.
 	 * 
 	 * @param toml a String containing TOML data
-	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys. Strict bare keys may only contain
-	 *        letters, numbers, underscores, and dashes (A-Za-z0-9_-), while lenient bare keys may contain any character
-	 *        except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see the
-	 *        documentation of Toml.java).
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys (see {@link Toml}).
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if a read error occurs
 	 * @throws TomlException if a parse error occurs
@@ -178,8 +174,7 @@ public final class Toml {
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded File. The strict bare keys are disabled (see
-	 * {@link #read(Reader, int, boolean)}.
+	 * Reads TOML data from an UTF-8 encoded File. Lenient bare keys are allowed (see {@link Toml}).
 	 * 
 	 * @param file the File to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -187,12 +182,24 @@ public final class Toml {
 	 * @throws TomlException if a parse error occurs
 	 */
 	public static Map<String, Object> read(File file) throws IOException, TomlException {
-		return read(new FileInputStream(file));
+		return read(file, false);
 	}
 	
 	/**
-	 * Reads TOML data from an UTF-8 encoded InputStream. The strict bare keys are disabled (see
-	 * {@link #read(Reader, int, boolean)}.
+	 * Reads TOML data from an UTF-8 encoded File.
+	 * 
+	 * @param file the File to read data from
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys (see {@link Toml}).
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
+	 */
+	public static Map<String, Object> read(File file, boolean strictAsciiBareKeys) throws IOException, TomlException {
+		return read(new FileInputStream(file), strictAsciiBareKeys);
+	}
+	
+	/**
+	 * Reads TOML data from an UTF-8 encoded InputStream. Lenient bare keys are allowed (see {@link Toml}).
 	 * 
 	 * @param in the InputStream to read data from
 	 * @return a {@code Map<String, Object>} containing the parsed data
@@ -200,26 +207,35 @@ public final class Toml {
 	 * @throws TomlException if a parse error occurs
 	 */
 	public static Map<String, Object> read(InputStream in) throws IOException, TomlException {
-		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available(), false);
+		return read(in, false);
 	}
 	
 	/**
-	 * Reads TOML data from a Reader, with a specific <code>stringBuilderSize</code>.
+	 * Reads TOML data from an UTF-8 encoded InputStream.
 	 * 
 	 * @param in the InputStream to read data from
-	 * @param stringBuilderSize the initial size of the StringBuilder which is internally used
-	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys. Strict bare keys may only contain
-	 *        letters, numbers, underscores, and dashes (A-Za-z0-9_-), while lenient bare keys may contain any character
-	 *        except those below the space character ' ' in the unicode table, '.', '[', ']' and '=' (see the
-	 *        documentation of Toml.java).
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys (see {@link Toml}).
 	 * @return a {@code Map<String, Object>} containing the parsed data
 	 * @throws IOException if a read error occurs
 	 * @throws TomlException if a parse error occurs
 	 */
-	public static Map<String, Object> read(Reader reader, int stringBuilderSize, boolean strictAsciiBareKeys)
-			throws IOException, TomlException {
-		StringBuilder sb = new StringBuilder(stringBuilderSize);
-		char[] buf = new char[8192];
+	public static Map<String, Object> read(InputStream in, boolean strictAsciiBareKeys) throws IOException, TomlException {
+		return read(new InputStreamReader(in, StandardCharsets.UTF_8), in.available(), strictAsciiBareKeys);
+	}
+	
+	/**
+	 * Reads TOML data from a Reader. The data is read until the end of the stream is reached.
+	 * 
+	 * @param in the InputStream to read data from
+	 * @param bufferSize the initial size of the internal buffer that will contain the entire data.
+	 * @param strictAsciiBareKeys <code>true</code> to enforce strict bare keys (see {@link Toml}).
+	 * @return a {@code Map<String, Object>} containing the parsed data
+	 * @throws IOException if a read error occurs
+	 * @throws TomlException if a parse error occurs
+	 */
+	public static Map<String, Object> read(Reader reader, int bufferSize, boolean strictAsciiBareKeys) throws IOException, TomlException {
+		StringBuilder sb = new StringBuilder(bufferSize);
+		char[] buf = new char[Math.min(bufferSize, 8192)];
 		int read;
 		while ((read = reader.read(buf)) != -1) {
 			sb.append(buf, 0, read);
