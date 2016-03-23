@@ -551,10 +551,10 @@ public final class TomlReader {
 				continue;
 			}
 			if (escape) {
-				if (c == '\r' || c == '\n') {
+				if (c == '\r' || c == '\n' || c == ' ' || c == '\t') {
 					if (c == '\r' && hasNext() && data.charAt(pos) == '\n')// "\r\n"
 						pos++;
-					else
+					else if (c == '\n')
 						line++;
 					nextUseful(false);
 					pos--;// so that it is read by the next call to next()
