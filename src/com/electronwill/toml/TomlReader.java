@@ -147,7 +147,7 @@ public final class TomlReader {
 				}
 				return false;
 			default:
-				throw new TomlException("Invalid character '" + firstChar + "' at line " + line);
+				throw new TomlException("Invalid character '" + toString(firstChar) + "' at line " + line);
 		}
 	}
 	
@@ -324,7 +324,7 @@ public final class TomlReader {
 			
 			char separator = nextUsefulOrLinebreak();// tries to find the '=' sign
 			if (separator != '=')
-				throw new TomlException("Invalid character '" + separator + "' at line " + line + ": expected '='");
+				throw new TomlException("Invalid character '" + toString(separator) + "' at line " + line + ": expected '='");
 				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			Object value = nextValue(valueFirstChar);
@@ -383,7 +383,7 @@ public final class TomlReader {
 			}
 			char separator = nextUsefulOrLinebreak();// tries to find the '=' sign
 			if (separator != '=')// an other character
-				throw new TomlException("Invalid character '" + separator + "' at line " + line + ": expected '='");
+				throw new TomlException("Invalid character '" + toString(separator) + "' at line " + line + ": expected '='");
 				
 			char valueFirstChar = nextUsefulOrLinebreak();
 			if (valueFirstChar == '\n') {
@@ -395,7 +395,7 @@ public final class TomlReader {
 			if (afterEntry == '#') {
 				pos--;// to make the next nextUseful() call read the # character
 			} else if (afterEntry != '\n') {
-				throw new TomlException("Invalid character '" + afterEntry + "' after the value at line " + line);
+				throw new TomlException("Invalid character '" + toString(afterEntry) + "' after the value at line " + line);
 			}
 			map.put(name, value);
 		}
@@ -471,9 +471,9 @@ public final class TomlReader {
 			}
 			if (strictAsciiBareKeys) {
 				if (!isValidInStrictBareKey(c))
-					throw new TomlException("Forbidden character '" + c + "' in strict bare-key at line " + line);
+					throw new TomlException("Forbidden character '" + toString(c) + "' in strict bare-key at line " + line);
 			} else if (c <= ' ' || c == '#' || c == '=' || c == '.' || c == '[' || c == ']') {// lenient bare key
-				throw new TomlException("Forbidden character '" + c + "' in lenient bare-key at line " + line);
+				throw new TomlException("Forbidden character '" + toString(c) + "' in lenient bare-key at line " + line);
 			} // else continue reading
 		}
 		throw new TomlException(
@@ -622,12 +622,32 @@ public final class TomlReader {
 				}
 			}
 			default:
-				throw new TomlException("Invalid escape sequence: \\" + c + " at line " + line);
+				throw new TomlException("Invalid escape sequence: \"\\" + c + "\" at line " + line);
 		}
 	}
 	
 	private boolean isValidInStrictBareKey(char c) {
 		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-');
+	}
+	
+	/**
+	 * Converts a char to a String. The char is escaped if needed.
+	 */
+	private String toString(char c) {
+		switch (c) {
+			case '\b':
+				return "\\b";
+			case '\t':
+				return "\\t";
+			case '\n':
+				return "\\n";
+			case '\r':
+				return "\\r";
+			case '\f':
+				return "\\f";
+			default:
+				return String.valueOf(c);
+		}
 	}
 	
 }
