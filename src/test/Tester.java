@@ -2,7 +2,7 @@ package test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Map;
 import com.electronwill.toml.Toml;
@@ -16,49 +16,69 @@ import com.electronwill.toml.TomlException;
  */
 public class Tester {
 	
-	public static void main(String[] args) throws IOException, TomlException {
-		URL urlExample = Tester.class.getResource("ressources/example.toml");
-		URL urlHardExample = Tester.class.getResource("ressources/hard-example.toml");
-		URL urlHardExampleUnicode = Tester.class.getResource("ressources/hard-example-unicode.toml");
-		URL[] urls = { urlExample, urlHardExample, urlHardExampleUnicode };
-		test(urls);
+	private static final File outputFolder = new File("./test-output");
+	private static final File validFolder = new File(Tester.class.getResource("/test/ressources/valid").getPath());
+	private static final File invalidFolder = new File(Tester.class.getResource("/test/ressources/invalid").getPath());
+	
+	public static void main(String[] args) throws IOException, TomlException, URISyntaxException {
+		System.out.println("---------------- Testing with valid files ----------------");
+		for (File file : validFolder.listFiles()) {
+			if (file.isFile() && file.getName().endsWith(".toml"))
+				readAndRewriteTest(file, false);
+		}
+		
+		System.out.println("---------------- Testing with invalid files ----------------");
+		for (File file : invalidFolder.listFiles()) {
+			if (file.isFile() && file.getName().endsWith(".toml")) {
+				try {
+					readTest(file, false);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		}
 	}
 	
-	private static void writeTest(Map<String, Object> map, String name) throws IOException {
-		if (!name.endsWith(".toml")) {
-			name += ".toml";
+	private static void readWrittenFiles() throws IOException {
+		File validFolder = new File(".");
+		for (File file : validFolder.listFiles()) {
+			if (file.isFile() && file.getName().endsWith(".toml"))
+				readTest(file, false);
 		}
-		File file = new File(name);
-		System.out.println("Writing \"" + name + "\"...");
+	}
+	
+	private static void writeTest(File file, Map<String, Object> data) throws IOException {
+		System.out.println("Writing \"" + file + "\"...");
 		
 		long t0 = System.nanoTime();
-		Toml.write(map, file);
+		Toml.write(data, file);
 		double time = (System.nanoTime() - t0) / (1000_000.0);
 		System.out.println("Written in " + time + " milliseconds");
 	}
 	
-	private static void test(URL[] urls) throws IOException, TomlException {
-		for (URL url : urls) {
-			System.out.println("========== " + url + " ==========");
-			System.out.println("Reading...");
-			
-			long t0 = System.nanoTime();
-			Map<String, Object> read = Toml.read(url.openStream());
-			double time = (System.nanoTime() - t0) / (1000_000.0);
-			System.out.println("Read in " + time + " milliseconds");
-			
-			/*
-			 * Uncomment to print the map.
-			 * System.out.println("====== Data output =======");
-			 * printMap(read);
-			 * System.out.println("====== End of data =======");
-			*/
-			
-			String[] urlParts = url.toString().split("/");
-			writeTest(read, "rewrite-" + urlParts[urlParts.length - 1]);
-			
-			System.out.println();
+	private static Map<String, Object> readTest(File file, boolean print) throws IOException, TomlException {
+		System.out.println("Reading \"" + file.getName() + "\"...");
+		
+		long t0 = System.nanoTime();
+		Map<String, Object> read = Toml.read(file);
+		double time = (System.nanoTime() - t0) / (1000_000.0);
+		System.out.println("Read in " + time + " milliseconds");
+		
+		if (print) {
+			System.out.println("====== Data output =======");
+			printMap(read);
+			System.out.println("====== End of data =======");
 		}
+		return read;
+	}
+	
+	private static void readAndRewriteTest(File file, boolean print) throws IOException, TomlException {
+		String[] pathParts = file.getPath().split("/");
+		System.out.println("========== " + pathParts[pathParts.length - 2] + "/" + pathParts[pathParts.length - 1] + " ==========");
+		Map<String, Object> data = readTest(file, print);
+		File out = new File(outputFolder, file.getName());
+		writeTest(out, data);
+		System.out.println();
 	}
 	
 	private static void printMap(Map<String, Object> map) {
