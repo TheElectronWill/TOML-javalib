@@ -470,7 +470,7 @@ public final class TomlReader {
 				}
 			}
 			if (strictAsciiBareKeys) {
-				if (!isValidInStrictBareKey(c))
+				if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-'))
 					throw new TomlException("Forbidden character '" + toString(c) + "' in strict bare-key at line " + line);
 			} else if (c <= ' ' || c == '#' || c == '=' || c == '.' || c == '[' || c == ']') {// lenient bare key
 				throw new TomlException("Forbidden character '" + toString(c) + "' in lenient bare-key at line " + line);
@@ -624,10 +624,6 @@ public final class TomlReader {
 			default:
 				throw new TomlException("Invalid escape sequence: \"\\" + c + "\" at line " + line);
 		}
-	}
-	
-	private boolean isValidInStrictBareKey(char c) {
-		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-');
 	}
 	
 	/**
