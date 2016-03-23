@@ -205,13 +205,21 @@ public final class TomlReader {
 					}
 					default:
 						pos--;// to include the first (already read) non-space character
-						name = nextBareKey(']', '.');
-						if (data.charAt(pos) == ']')
+						name = nextBareKey(']', '.').trim();
+						
+						if (data.charAt(pos) == ']') {
+							if (!name.isEmpty())
+								keyParts.add(name);
 							insideSquareBrackets = false;
+						} else if (name.isEmpty()) {
+							throw new TomlException("Invalid empty key at line " + line);
+						}
+						
 						pos++;// to go after the character we stopped at in nextBareKey()
 						break;
 				}
-				keyParts.add(name.trim());
+				if (insideSquareBrackets)
+					keyParts.add(name.trim());
 			}
 			
 			// -- Check --
@@ -319,6 +327,8 @@ public final class TomlReader {
 				default:
 					pos--;// to include the first (already read) non-space character
 					name = nextBareKey(' ', '\t', '=');
+					if (name.isEmpty())
+						throw new TomlException("Invalid empty key at line " + line);
 					break;
 			}
 			
@@ -379,6 +389,8 @@ public final class TomlReader {
 				default:
 					pos--;// to include the first (already read) non-space character
 					name = nextBareKey(' ', '\t', '=');
+					if (name.isEmpty())
+						throw new TomlException("Invalid empty key at line " + line);
 					break;
 			}
 			char separator = nextUsefulOrLinebreak();// tries to find the '=' sign
