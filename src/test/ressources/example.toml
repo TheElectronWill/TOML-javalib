@@ -18,11 +18,11 @@ ports = [ 8001, 8001, 8002 ]
 connection_max = 5000
 enabled = true
 
-[test.sub1]
-this = "should work fine"
+[test.sub1]#the "test" table is implicit
+this = "must work fine"
 
 	[test.sub1.sub2.sub3]
-	and = "this also should work"
+	and = "this must also work"
 
 [servers]
 
@@ -62,7 +62,7 @@ Line 02"""
   sku = 738594937
   
     [products.sub]
-    test = "yes IT WORKS!"
+    test = "This should work!"
 
   [[products]]
   name = "Nail"

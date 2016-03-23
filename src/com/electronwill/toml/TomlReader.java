@@ -175,7 +175,7 @@ public final class TomlReader {
 				switch (next) {
 					case '"': {
 						String current = keyBuilder.toString().trim();
-						if (current.length() > 0) {
+						if (!current.isEmpty()) {
 							keyParts.add(current);
 							keyBuilder.setLength(0);
 						}
@@ -184,7 +184,7 @@ public final class TomlReader {
 					}
 					case '\'': {
 						String current = keyBuilder.toString().trim();
-						if (current.length() > 0) {
+						if (!current.isEmpty()) {
 							keyParts.add(current);
 							keyBuilder.setLength(0);
 						}
@@ -193,13 +193,14 @@ public final class TomlReader {
 					}
 					case ']': {
 						String current = keyBuilder.toString().trim();
-						if (!current.isEmpty())
+						if (!current.isEmpty()) {
 							keyParts.add(current);
+						}
 						break whileLoop;
 					}
 					case '.': {
 						String current = keyBuilder.toString().trim();
-						if (current.length() == 0) {
+						if (current.isEmpty()) {
 							throw new TomlException("Invalid table name at line " + line + ": empty value are not allowed here");
 						}
 						keyParts.add(current);
@@ -237,12 +238,12 @@ public final class TomlReader {
 				String part = keyParts.get(i);
 				Object child = valueMap.get(part);
 				Map<String, Object> childMap;
-				if (child == null) {
+				if (child == null) {// implicit table
 					childMap = new HashMap<>(4);
 					valueMap.put(part, childMap);
-				} else if (child instanceof Map) {
+				} else if (child instanceof Map) {// table
 					childMap = (Map) child;
-				} else {
+				} else {// array
 					List<Map> list = (List) child;
 					childMap = list.get(list.size() - 1);
 				}
@@ -465,6 +466,7 @@ public final class TomlReader {
 				
 			if (maybeDate)
 				return Toml.DATE_FORMATTER.parseBest(valueStr, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
+				
 		} catch (Exception ex) {
 			throw new TomlException("Invalid value: \"" + valueStr + "\" at line " + line, ex);
 		}
