@@ -16,9 +16,9 @@ import com.electronwill.toml.TomlException;
  */
 public class Tester {
 	
-	private static final File outputFolder = new File("./test-output");
-	private static final File validFolder = new File(Tester.class.getResource("/test/ressources/valid").getPath());
-	private static final File invalidFolder = new File(Tester.class.getResource("/test/ressources/invalid").getPath());
+	private static final File outputFolder = new File("./test-output");// where to write TOML data
+	private static final File validFolder = new File("./test-valid");// contains valid TOML files
+	private static final File invalidFolder = new File("./test-invalid");// contains invalid TOML files
 	
 	public static void main(String[] args) throws IOException, TomlException, URISyntaxException {
 		System.out.println("---------------- Testing with valid files ----------------");
