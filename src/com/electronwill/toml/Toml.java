@@ -235,7 +235,7 @@ public final class Toml {
 	 */
 	public static Map<String, Object> read(Reader reader, int bufferSize, boolean strictAsciiBareKeys) throws IOException, TomlException {
 		StringBuilder sb = new StringBuilder(bufferSize);
-		char[] buf = new char[Math.min(bufferSize, 8192)];
+		char[] buf = new char[8192];
 		int read;
 		while ((read = reader.read(buf)) != -1) {
 			sb.append(buf, 0, read);
