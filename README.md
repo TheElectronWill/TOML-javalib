@@ -56,5 +56,6 @@ Everything works fine! A valid TOML data is correctly parsed, and the TOMLWriter
 This library requires Java 8.
 
 ## Download
-[Click here to download the latest release (v1.1).] (https://github.com/TheElectronWill/TOML-javalib/releases/download/v1.1/TOML.lib.v1.1.by.TheElectronWill.jar)
- This jar file also contains the documented source code.
+Download the latest release (v1.2):  
+* [Just the compiled jar](https://github.com/TheElectronWill/TOML-javalib/releases/download/v1.2/TOML.lib.v1.2.by.TheElectronWill.jar)
+* [The jar containing the compiled classes + the documented source](https://github.com/TheElectronWill/TOML-javalib/releases/download/v1.2/TOML.lib.v1.2.by.TheElectronWill.source.javadoc.jar)
