@@ -27,18 +27,33 @@ public final class TomlWriter {
 	private final Writer writer;
 	private final int indentSize;
 	private final char indentCharacter;
+	private final String lineSeparator;
 	private int indentationLevel = -1;// -1 to prevent indenting the first level
 	private LinkedList<String> tablesNames = new LinkedList<>();
 	private int lineBreaks = 0;
 	
 	/**
-	 * Creates a new TomlWriter with the defaults parameters. This is exactly the same as
-	 * {@code TomlWriter(writer, 1, false)}.
+	 * Creates a new TomlWriter with the defaults parameters. The system line separator is used (ie '\n' on Linux and
+	 * OSX, "\r\n" on Windows). This is exactly the same as
+	 * {@code TomlWriter(writer, 1, false, Toml.systemLineSeparator)}.
 	 * 
 	 * @param writer where to write the data
 	 */
 	public TomlWriter(Writer writer) {
-		this(writer, 1, false);
+		this(writer, 1, false, Toml.systemLineSeparator);
+	}
+	
+	/**
+	 * Creates a new TomlWriter with the specified parameters. The system line separator is used (ie '\n' on Linux and
+	 * OSX, "\r\n" on Windows). This is exactly the same as
+	 * {@code TomlWriter(writer, indentSize, indentWithSpaces, Toml.systemLineSeparator)}.
+	 * 
+	 * @param writer where to write the data
+	 * @param indentSize the size of each indent
+	 * @param indentWithSpaces true to indent with spaces, false to indent with tabs
+	 */
+	public TomlWriter(Writer writer, int indentSize, boolean indentWithSpaces) {
+		this(writer, indentSize, indentWithSpaces, Toml.systemLineSeparator);
 	}
 	
 	/**
@@ -47,11 +62,13 @@ public final class TomlWriter {
 	 * @param writer where to write the data
 	 * @param indentSize the size of each indent
 	 * @param indentWithSpaces true to indent with spaces, false to indent with tabs
+	 * @param lineSeparator the String to write to break lines
 	 */
-	public TomlWriter(Writer writer, int indentSize, boolean indentWithSpaces) {
+	public TomlWriter(Writer writer, int indentSize, boolean indentWithSpaces, String lineSeparator) {
 		this.writer = writer;
 		this.indentSize = indentSize;
 		this.indentCharacter = indentWithSpaces ? ' ' : '\t';
+		this.lineSeparator = lineSeparator;
 	}
 	
 	/**
@@ -325,7 +342,7 @@ public final class TomlWriter {
 	
 	private void newLine() throws IOException {
 		if (lineBreaks <= 1) {
-			writer.write('\n');
+			writer.write(lineSeparator);
 			lineBreaks++;
 		}
 	}
