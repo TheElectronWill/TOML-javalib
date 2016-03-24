@@ -16,7 +16,7 @@ import java.util.Map;
  * <h1>DateTimes support</h1>
  * <p>
  * Any {@link TemporalAccessor} may be added in a Map passed to this writer, this writer can only write three kind of
- * datetimes:{@link LocalDate}, {@link LocalDateTime} and {@link ZonedDateTime}.
+ * datetimes: {@link LocalDate}, {@link LocalDateTime} and {@link ZonedDateTime}.
  * </p>
  * 
  * @author TheElectronWill
@@ -317,8 +317,7 @@ public final class TomlWriter {
 											// writeTableContent()
 			throw new IOException("Unexpected value " + value);
 		} else {
-			// TODO Should we throw an Exception or write value.toString()??
-			writeString(value.toString());
+			throw new TomlException("Unsupported value of type " + value.getClass().getCanonicalName());
 		}
 	}
 	
