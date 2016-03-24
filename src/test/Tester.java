@@ -43,8 +43,8 @@ public class Tester {
 					Map<String, Object> read = readTest(file, false);
 					printMap(read);
 					noException.add(file.getName());
-					System.err.println("/!\\ No exception thrown when reading an invalid file!");
-					System.err.println();
+					System.out.println("[!] No exception thrown when reading an invalid file!");
+					System.out.println();
 				} catch (Exception ex) {
 					System.out.println("--> " + ex.toString());
 					System.out.println();
