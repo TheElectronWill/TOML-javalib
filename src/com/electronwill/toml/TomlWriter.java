@@ -292,13 +292,15 @@ public final class TomlWriter {
 	private void writeValue(Object value) throws IOException {
 		if (value instanceof String) {
 			writeString((String) value);
-		} else if (value instanceof Number) {
+		} else if (value instanceof Number || value instanceof Boolean) {
 			write(value.toString());
 		} else if (value instanceof TemporalAccessor) {
 			String formatted = Toml.DATE_FORMATTER.format((TemporalAccessor) value);
 			if (formatted.endsWith("T"))// If the last character is a 'T'
 				formatted = formatted.substring(0, formatted.length() - 1);// removes it because it's invalid.
 			write(formatted);
+		} else if (value instanceof Collection) {
+			writeArray((Collection) value);
 		} else if (value instanceof int[]) {
 			writeArray((int[]) value);
 		} else if (value instanceof byte[]) {
