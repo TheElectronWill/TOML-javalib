@@ -67,8 +67,7 @@ public final class Toml {
 			.optionalEnd()
 			.optionalEnd()
 			.toFormatter();
-	public static final String systemLineSeparator = System.getProperty("line.separator");
-	
+			
 	private Toml() {}
 	
 	/**

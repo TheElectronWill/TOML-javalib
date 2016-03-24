@@ -34,26 +34,25 @@ public final class TomlWriter {
 	
 	/**
 	 * Creates a new TomlWriter with the defaults parameters. The system line separator is used (ie '\n' on Linux and
-	 * OSX, "\r\n" on Windows). This is exactly the same as
-	 * {@code TomlWriter(writer, 1, false, Toml.systemLineSeparator)}.
+	 * OSX, "\r\n" on Windows). This is exactly the same as {@code TomlWriter(writer, 1, false, System.lineSeparator()}.
 	 * 
 	 * @param writer where to write the data
 	 */
 	public TomlWriter(Writer writer) {
-		this(writer, 1, false, Toml.systemLineSeparator);
+		this(writer, 1, false, System.lineSeparator());
 	}
 	
 	/**
 	 * Creates a new TomlWriter with the specified parameters. The system line separator is used (ie '\n' on Linux and
 	 * OSX, "\r\n" on Windows). This is exactly the same as
-	 * {@code TomlWriter(writer, indentSize, indentWithSpaces, Toml.systemLineSeparator)}.
+	 * {@code TomlWriter(writer, indentSize, indentWithSpaces, System.lineSeparator())}.
 	 * 
 	 * @param writer where to write the data
 	 * @param indentSize the size of each indent
 	 * @param indentWithSpaces true to indent with spaces, false to indent with tabs
 	 */
 	public TomlWriter(Writer writer, int indentSize, boolean indentWithSpaces) {
-		this(writer, indentSize, indentWithSpaces, Toml.systemLineSeparator);
+		this(writer, indentSize, indentWithSpaces, System.lineSeparator());
 	}
 	
 	/**
