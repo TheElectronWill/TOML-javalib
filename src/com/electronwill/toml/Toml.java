@@ -22,11 +22,6 @@ import java.util.Map;
  * Utility class for reading and writing TOML v0.4.0. This class internally uses {@link TomlReader} and
  * {@link TomlWriter}.
  * 
- * <h1>Newlines support</h1>
- * <p>
- * Only '\n' and "\r\n" are supported as newlines. '\r' alone is NOT supported. This should not be a problem, because
- * all the modern operating systems use '\n' (Linux, OSX) or "\r\n" (Windows).
- * </p>
  * <h1>DateTimes support</h1>
  * <p>
  * The datetime support is more extended than in the TOML specification. The reader and the writer support three kind of
