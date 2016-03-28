@@ -457,9 +457,12 @@ public final class TomlReader {
 		}
 		String valueStr = sb.toString();
 		try {
-			if (maybeInteger)
-				return (valueStr.length() < 10) ? Integer.parseInt(valueStr) : Long.parseLong(valueStr);
-				
+			if (maybeInteger) {
+				if (valueStr.length() < 10)
+					return Integer.parseInt(valueStr);
+				return Long.parseLong(valueStr);
+			}
+			
 			if (maybeDouble)
 				return Double.parseDouble(valueStr);
 				
