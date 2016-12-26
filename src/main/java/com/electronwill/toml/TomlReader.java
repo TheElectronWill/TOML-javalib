@@ -132,12 +132,12 @@ public final class TomlReader {
 			case '{':
 				return nextInlineTable();
 			case 't':// Must be "true"
-				if (pos + 3 >= data.length() || next() != 'r' || next() != 'u' || next() != 'e') {
+				if (pos + 3 > data.length() || next() != 'r' || next() != 'u' || next() != 'e') {
 					throw new TomlException("Invalid value at line " + line);
 				}
 				return true;
 			case 'f':// Must be "false"
-				if (pos + 4 >= data.length() || next() != 'a' || next() != 'l' || next() != 's' || next() != 'e') {
+				if (pos + 4 > data.length() || next() != 'a' || next() != 'l' || next() != 's' || next() != 'e') {
 					throw new TomlException("Invalid value at line " + line);
 				}
 				return false;
