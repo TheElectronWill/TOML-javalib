@@ -1,5 +1,9 @@
 # TOML-javalib
-This is a fast and simple [TOML](https://github.com/toml-lang/toml) library.
+
+**⚠️ Warning: this library is no longer maintained. Recent versions of TOML aren't supported, and there can be bugs.  
+Please head over to the [Night-Config project](https://github.com/TheElectronWill/night-config).**
+
+This *was* a simple [TOML](https://github.com/toml-lang/toml) library.
 Its goal is to allow Java developers to easily use the TOML format in their applications.
 This library is compatible with TOML v0.4.0.
 
